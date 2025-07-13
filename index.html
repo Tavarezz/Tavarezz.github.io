@@ -141,222 +141,75 @@
     </div>
 
     <script type="module">
-        // Dados extraídos do texto fornecido
-        const sponsorshipData = {
-            "nodes": [
-                // Patrocinadores
-                { "id": "Betano", "type": "sponsor" },
-                { "id": "Betnacional", "type": "sponsor" },
-                { "id": "Esportes da Sorte", "type": "sponsor" },
-                { "id": "Sportingbet", "type": "sponsor" },
-                { "id": "EstrelaBet", "type": "sponsor" },
-                { "id": "Pixbet", "type": "sponsor" },
-                { "id": "Blaze", "type": "sponsor" },
-                { "id": "Bet365", "type": "sponsor" },
+        // Função principal que inicia o carregamento dos dados e a visualização
+        async function iniciarVisualizacao() {
+            // 1. Carregar os dados do arquivo JSON
+            const response = await fetch('data.json');
+            const sponsorshipData = await response.json();
+            
+            // --- LÓGICA PARA CRIAR LINKS DE CATEGORIA (movida para dentro da função) ---
+            const nodesByCategory = sponsorshipData.nodes
+                .filter(node => node.type === 'entity')
+                .reduce((acc, node) => {
+                    const category = node.category;
+                    if (!acc[category]) {
+                        acc[category] = [];
+                    }
+                    acc[category].push(node.id);
+                    return acc;
+                }, {});
 
-                // Patrocinados
-                // Betano
-                { "id": "Brasileirão", "type": "entity", "category": "Competições" },
-                { "id": "Copa do Brasil", "type": "entity", "category": "Competições" },
-                { "id": "Atlético-MG", "type": "entity", "category": "Clubes" },
-                { "id": "Fluminense", "type": "entity", "category": "Clubes" },
-                { "id": "Campeonato Mineiro", "type": "entity", "category": "Competições" },
-                { "id": "Felipe Massa", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Loco Abreu", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Rivellino", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Minotouro", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Leandrinho Barbosa", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Adriane Galisteu", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Cherrygumms", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Patife", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "GV", "type": "entity", "category": "Mídia e Jornalismo" },
-                { "id": "Rica Perrone", "type": "entity", "category": "Mídia e Jornalismo" },
-                { "id": "Victor Canedo", "type": "entity", "category": "Mídia e Jornalismo" },
-
-                // Betnacional
-                { "id": "Rede Globo", "type": "entity", "category": "Mídia" },
-                { "id": "Campeonato Carioca", "type": "entity", "category": "Competições" },
-                { "id": "Campeonato Pernambucano", "type": "entity", "category": "Competições" },
-                { "id": "Copa do Nordeste", "type": "entity", "category": "Competições" },
-                { "id": "Remo", "type": "entity", "category": "Clubes" },
-                { "id": "Paysandu", "type": "entity", "category": "Clubes" },
-                { "id": "Sport", "type": "entity", "category": "Clubes" },
-                { "id": "Náutico", "type": "entity", "category": "Clubes" },
-                { "id": "Santa Cruz", "type": "entity", "category": "Clubes" },
-                { "id": "Vitória", "type": "entity", "category": "Clubes" },
-                { "id": "FURIA", "type": "entity", "category": "eSports" },
-                { "id": "Vinícius Júnior", "type": "entity", "category": "Atletas em Atividade" },
-                { "id": "André Trindade", "type": "entity", "category": "Atletas em Atividade" },
-                { "id": "Galvão Bueno", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Hernanes", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Donizete Pantera", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Vagner Love", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Manoel Tobias", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Sheilla Castro", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Jaqueline Carvalho", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Murilo Endres", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Seu Jorge", "type": "entity", "category": "Música e Artes" },
-                { "id": "Thiaguinho", "type": "entity", "category": "Música e Artes" },
-                { "id": "Ludmilla", "type": "entity", "category": "Música e Artes" },
-                { "id": "Cacá Bueno", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Natalia Guitler", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Gabriela Freindorfer", "type": "entity", "category": "Influenciadores e TV" },
-
-                // Esportes da Sorte
-                { "id": "Big Brother Brasil", "type": "entity", "category": "Mídia" },
-                { "id": "Libertadores (Globo)", "type": "entity", "category": "Mídia" },
-                { "id": "Estúdios Flow", "type": "entity", "category": "Mídia" },
-                { "id": "Grêmio", "type": "entity", "category": "Clubes" },
-                { "id": "Bahia", "type": "entity", "category": "Clubes" },
-                { "id": "Athletico-PR", "type": "entity", "category": "Clubes" },
-                { "id": "Palmeiras Feminino", "type": "entity", "category": "Clubes" },
-                { "id": "Fortal", "type": "entity", "category": "Eventos Culturais" },
-                { "id": "Festival de Parintins", "type": "entity", "category": "Eventos Culturais" },
-                { "id": "Matheus Cunha", "type": "entity", "category": "Atletas em Atividade" },
-                { "id": "Rodinei", "type": "entity", "category": "Atletas em Atividade" },
-                { "id": "João Gomes", "type": "entity", "category": "Atletas em Atividade" },
-                { "id": "Bebeto", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Zé Felipe", "type": "entity", "category": "Música e Artes" },
-                { "id": "Léo Santana", "type": "entity", "category": "Música e Artes" },
-                { "id": "MC Daniel", "type": "entity", "category": "Música e Artes" },
-                { "id": "Beto Jamaica", "type": "entity", "category": "Música e Artes" },
-                { "id": "Carlinhos Maia", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Virginia Fonseca", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Pedro Scooby", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Betty Faria", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Antonio Tabet", "type": "entity", "category": "Mídia e Jornalismo" },
-
-                // Sportingbet
-                { "id": "CazéTV", "type": "entity", "category": "Mídia" },
-                { "id": "RECORD", "type": "entity", "category": "Mídia" },
-                { "id": "NBA Brasil", "type": "entity", "category": "Competições" },
-                { "id": "CONMEBOL", "type": "entity", "category": "Competições" },
-                { "id": "Palmeiras", "type": "entity", "category": "Clubes" },
-                { "id": "Marcelo", "type": "entity", "category": "Atletas em Atividade" },
-
-                // EstrelaBet
-                { "id": "Copa do Mundo Feminina (CazéTV)", "type": "entity", "category": "Mídia" },
-                { "id": "Magnus Futsal", "type": "entity", "category": "Outros Esportes" },
-                { "id": "Minas Tênis Clube (Vôlei)", "type": "entity", "category": "Outros Esportes" },
-                { "id": "Fabrício Werdum", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Jorge & Mateus", "type": "entity", "category": "Música e Artes" },
-                { "id": "Matheus & Kauan", "type": "entity", "category": "Música e Artes" },
-                { "id": "César Menotti & Fabiano", "type": "entity", "category": "Música e Artes" },
-                { "id": "Fernanda Gentil", "type": "entity", "category": "Mídia e Jornalismo" },
-
-                // Pixbet
-                { "id": "Flamengo", "type": "entity", "category": "Clubes" },
-                { "id": "Federação Paulista de Futebol", "type": "entity", "category": "Competições" },
-                { "id": "Hulk", "type": "entity", "category": "Atletas em Atividade" },
-                { "id": "Zico", "type": "entity", "category": "Lendas e Ex-Atletas" },
-                { "id": "Wesley Safadão", "type": "entity", "category": "Música e Artes" },
-                { "id": "Xand Avião", "type": "entity", "category": "Música e Artes" },
-                { "id": "Nattan", "type": "entity", "category": "Música e Artes" },
-                { "id": "Whindersson Nunes", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Mofi", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Rafael Cunha", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Tirulipa", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Luva de Pedreiro", "type": "entity", "category": "Influenciadores e TV" },
-
-                // Blaze
-                { "id": "Botafogo", "type": "entity", "category": "Clubes" },
-                { "id": "Santos", "type": "entity", "category": "Clubes" },
-                { "id": "Neymar Jr.", "type": "entity", "category": "Atletas em Atividade" },
-                { "id": "MC Kauan", "type": "entity", "category": "Música e Artes" },
-                { "id": "Felipe Neto", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Viih Tube", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Mel Maia", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Rico Melquiades", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Jon Vlogs", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Juju Ferrari", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Juju Salimeni", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Viviane Araújo", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Gkay", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Cauã Reymond", "type": "entity", "category": "Influenciadores e TV" },
-                { "id": "Maya Massafera", "type": "entity", "category": "Influenciadores e TV" },
-
-                // Bet365
-                { "id": "Marketing Global", "type": "entity", "category": "Mídia" },
-            ],
-            "links": [
-                // Betano
-                { "source": "Betano", "target": "Brasileirão" }, { "source": "Betano", "target": "Copa do Brasil" }, { "source": "Betano", "target": "Atlético-MG" }, { "source": "Betano", "target": "Fluminense" }, { "source": "Betano", "target": "Campeonato Mineiro" }, { "source": "Betano", "target": "Felipe Massa" }, { "source": "Betano", "target": "Loco Abreu" }, { "source": "Betano", "target": "Rivellino" }, { "source": "Betano", "target": "Minotouro" }, { "source": "Betano", "target": "Leandrinho Barbosa" }, { "source": "Betano", "target": "Adriane Galisteu" }, { "source": "Betano", "target": "Cherrygumms" }, { "source": "Betano", "target": "Patife" }, { "source": "Betano", "target": "GV" }, { "source": "Betano", "target": "Rica Perrone" }, { "source": "Betano", "target": "Victor Canedo" },
-                // Betnacional
-                { "source": "Betnacional", "target": "Rede Globo" }, { "source": "Betnacional", "target": "Campeonato Carioca" }, { "source": "Betnacional", "target": "Campeonato Pernambucano" }, { "source": "Betnacional", "target": "Copa do Nordeste" }, { "source": "Betnacional", "target": "Remo" }, { "source": "Betnacional", "target": "Paysandu" }, { "source": "Betnacional", "target": "Sport" }, { "source": "Betnacional", "target": "Náutico" }, { "source": "Betnacional", "target": "Santa Cruz" }, { "source": "Betnacional", "target": "Vitória" }, { "source": "Betnacional", "target": "FURIA" }, { "source": "Betnacional", "target": "Vinícius Júnior" }, { "source": "Betnacional", "target": "André Trindade" }, { "source": "Betnacional", "target": "Galvão Bueno" }, { "source": "Betnacional", "target": "Hernanes" }, { "source": "Betnacional", "target": "Donizete Pantera" }, { "source": "Betnacional", "target": "Vagner Love" }, { "source": "Betnacional", "target": "Manoel Tobias" }, { "source": "Betnacional", "target": "Sheilla Castro" }, { "source": "Betnacional", "target": "Jaqueline Carvalho" }, { "source": "Betnacional", "target": "Murilo Endres" }, { "source": "Betnacional", "target": "Seu Jorge" }, { "source": "Betnacional", "target": "Thiaguinho" }, { "source": "Betnacional", "target": "Ludmilla" }, { "source": "Betnacional", "target": "Cacá Bueno" }, { "source": "Betnacional", "target": "Natalia Guitler" }, { "source": "Betnacional", "target": "Gabriela Freindorfer" },
-                // Esportes da Sorte
-                { "source": "Esportes da Sorte", "target": "Big Brother Brasil" }, { "source": "Esportes da Sorte", "target": "Libertadores (Globo)" }, { "source": "Esportes da Sorte", "target": "Estúdios Flow" }, { "source": "Esportes da Sorte", "target": "Grêmio" }, { "source": "Esportes da Sorte", "target": "Bahia" }, { "source": "Esportes da Sorte", "target": "Athletico-PR" }, { "source": "Esportes da Sorte", "target": "Palmeiras Feminino" }, { "source": "Esportes da Sorte", "target": "Fortal" }, { "source": "Esportes da Sorte", "target": "Festival de Parintins" }, { "source": "Esportes da Sorte", "target": "Matheus Cunha" }, { "source": "Esportes da Sorte", "target": "Rodinei" }, { "source": "Esportes da Sorte", "target": "João Gomes" }, { "source": "Esportes da Sorte", "target": "Bebeto" }, { "source": "Esportes da Sorte", "target": "Zé Felipe" }, { "source": "Esportes da Sorte", "target": "Léo Santana" }, { "source": "Esportes da Sorte", "target": "MC Daniel" }, { "source": "Esportes da Sorte", "target": "Beto Jamaica" }, { "source": "Esportes da Sorte", "target": "Carlinhos Maia" }, { "source": "Esportes da Sorte", "target": "Virginia Fonseca" }, { "source": "Esportes da Sorte", "target": "Pedro Scooby" }, { "source": "Esportes da Sorte", "target": "Betty Faria" }, { "source": "Esportes da Sorte", "target": "Antonio Tabet" },
-                // Sportingbet
-                { "source": "Sportingbet", "target": "CazéTV" }, { "source": "Sportingbet", "target": "RECORD" }, { "source": "Sportingbet", "target": "NBA Brasil" }, { "source": "Sportingbet", "target": "CONMEBOL" }, { "source": "Sportingbet", "target": "Palmeiras" }, { "source": "Sportingbet", "target": "Marcelo" },
-                // EstrelaBet
-                { "source": "EstrelaBet", "target": "Copa do Mundo Feminina (CazéTV)" }, { "source": "EstrelaBet", "target": "Magnus Futsal" }, { "source": "EstrelaBet", "target": "Minas Tênis Clube (Vôlei)" }, { "source": "EstrelaBet", "target": "Fabrício Werdum" }, { "source": "EstrelaBet", "target": "Jorge & Mateus" }, { "source": "EstrelaBet", "target": "Matheus & Kauan" }, { "source": "EstrelaBet", "target": "César Menotti & Fabiano" }, { "source": "EstrelaBet", "target": "Fernanda Gentil" },
-                // Pixbet
-                { "source": "Pixbet", "target": "Flamengo" }, { "source": "Pixbet", "target": "Federação Paulista de Futebol" }, { "source": "Pixbet", "target": "Hulk" }, { "source": "Pixbet", "target": "Zico" }, { "source": "Pixbet", "target": "Wesley Safadão" }, { "source": "Pixbet", "target": "Xand Avião" }, { "source": "Pixbet", "target": "Nattan" }, { "source": "Pixbet", "target": "Whindersson Nunes" }, { "source": "Pixbet", "target": "Mofi" }, { "source": "Pixbet", "target": "Rafael Cunha" }, { "source": "Pixbet", "target": "Tirulipa" }, { "source": "Pixbet", "target": "Luva de Pedreiro" },
-                // Blaze
-                { "source": "Blaze", "target": "Botafogo" }, { "source": "Blaze", "target": "Santos" }, { "source": "Blaze", "target": "Neymar Jr." }, { "source": "Blaze", "target": "MC Kauan" }, { "source": "Blaze", "target": "Felipe Neto" }, { "source": "Blaze", "target": "Viih Tube" }, { "source": "Blaze", "target": "Mel Maia" }, { "source": "Blaze", "target": "Rico Melquiades" }, { "source": "Blaze", "target": "Jon Vlogs" }, { "source": "Blaze", "target": "Juju Ferrari" }, { "source": "Blaze", "target": "Juju Salimeni" }, { "source": "Blaze", "target": "Viviane Araújo" }, { "source": "Blaze", "target": "Gkay" }, { "source": "Blaze", "target": "Cauã Reymond" }, { "source": "Blaze", "target": "Maya Massafera" },
-                // Bet365
-                { "source": "Bet365", "target": "Marketing Global" }
-            ]
-        };
-
-        // --- NOVA LÓGICA PARA CRIAR LINKS DE CATEGORIA ---
-        // 1. Agrupar nós de entidade por categoria
-        const nodesByCategory = sponsorshipData.nodes
-            .filter(node => node.type === 'entity')
-            .reduce((acc, node) => {
-                const category = node.category;
-                if (!acc[category]) {
-                    acc[category] = [];
-                }
-                acc[category].push(node.id);
-                return acc;
-            }, {});
-
-        // 2. Criar novos links para nós dentro da mesma categoria
-        const categoryLinks = [];
-        for (const category in nodesByCategory) {
-            const ids = nodesByCategory[category];
-            if (ids.length > 1) {
-                for (let i = 0; i < ids.length - 1; i++) {
-                    // Ligar sequencialmente para evitar um emaranhado de linhas
-                    categoryLinks.push({
-                        source: ids[i],
-                        target: ids[i + 1],
-                        type: 'category' // Adicionar um tipo para estilização e lógica
-                    });
+            const categoryLinks = [];
+            for (const category in nodesByCategory) {
+                const ids = nodesByCategory[category];
+                if (ids.length > 1) {
+                    for (let i = 0; i < ids.length - 1; i++) {
+                        categoryLinks.push({
+                            source: ids[i],
+                            target: ids[i + 1],
+                            type: 'category'
+                        });
+                    }
                 }
             }
+            sponsorshipData.links.push(...categoryLinks);
+            // --- FIM DA LÓGICA DE LINKS ---
+
+            // 2. Chamar a função para desenhar o gráfico com os dados carregados
+            drawGraph(sponsorshipData);
+            // Adicionar listener para redimensionar a janela
+            window.addEventListener('resize', () => drawGraph(sponsorshipData));
         }
 
-        // 3. Adicionar os novos links ao array principal de links
-        sponsorshipData.links.push(...categoryLinks);
-        // --- FIM DA NOVA LÓGICA ---
+        // A função `drawGraph` agora recebe os dados como um parâmetro
+        function drawGraph(sponsorshipData) {
+            const container = document.getElementById('graph');
+            container.innerHTML = ''; // Limpa o container antes de redesenhar
+            const tooltip = d3.select(".tooltip");
 
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            
+            const categories = [...new Set(sponsorshipData.nodes.filter(n => n.type === 'entity').map(n => n.category))];
+            categories.forEach(category => colorScale(category));
+            
+            // Desenha a legenda (apenas se não existir para evitar duplicatas ao redimensionar)
+            if (d3.select("#legend-container .category-legend").empty()) {
+                const legendContainer = d3.select("#legend-container");
+                const legend = legendContainer.append("div").attr("class", "category-legend");
+                const legendItems = legend.selectAll(".legend-item")
+                    .data(categories)
+                    .enter()
+                    .append("div")
+                    .attr("class", "legend-item");
 
-        const container = document.getElementById('graph');
-        const tooltip = d3.select(".tooltip");
+                legendItems.append("div")
+                    .attr("class", "legend-color")
+                    .style("background-color", d => colorScale(d));
+                
+                legendItems.append("span")
+                    .text(d => d);
+            }
 
-        const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-        
-        const categories = [...new Set(sponsorshipData.nodes.filter(n => n.type === 'entity').map(n => n.category))];
-        categories.forEach(category => colorScale(category));
-
-        const legendContainer = d3.select("#legend-container");
-        const legend = legendContainer.append("div").attr("class", "category-legend");
-        const legendItems = legend.selectAll(".legend-item")
-            .data(categories)
-            .enter()
-            .append("div")
-            .attr("class", "legend-item");
-
-        legendItems.append("div")
-            .attr("class", "legend-color")
-            .style("background-color", d => colorScale(d));
-        
-        legendItems.append("span")
-            .text(d => d);
-
-        function drawGraph() {
-            container.innerHTML = '';
             const width = container.clientWidth;
             const height = container.clientHeight;
 
@@ -364,17 +217,11 @@
                 .append("svg")
                 .attr("viewBox", [0, 0, width, height])
                 .attr("width", width)
-                .attr("height", height)
-                .call(d3.zoom()
-                    .scaleExtent([0.1, 8])
-                    .on("zoom", (event) => {
-                        g.attr("transform", event.transform);
-                    }))
-                .on("dblclick.zoom", null); // Disable double-click zoom
-
+                .attr("height", height);
+            
             const g = svg.append("g");
 
-            // Zoom controls
+            // Configuração do Zoom
             const zoom = d3.zoom()
                 .scaleExtent([0.1, 8])
                 .on('zoom', (event) => {
@@ -383,21 +230,14 @@
 
             svg.call(zoom);
 
-            document.getElementById('zoom-in').addEventListener('click', () => {
-                svg.transition().call(zoom.scaleBy, 1.2);
-            });
+            document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.2);
+            document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.8);
+            document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
 
-            document.getElementById('zoom-out').addEventListener('click', () => {
-                svg.transition().call(zoom.scaleBy, 0.8);
-            });
-
-            document.getElementById('zoom-reset').addEventListener('click', () => {
-                svg.transition().call(zoom.transform, d3.zoomIdentity);
-            });
 
             const simulation = d3.forceSimulation(sponsorshipData.nodes)
                 .force("link", d3.forceLink(sponsorshipData.links).id(d => d.id).distance(d => {
-                    if (d.type === 'category') return 50; // Links mais curtos para categorias
+                    if (d.type === 'category') return 50;
                     return d.source.type === 'sponsor' ? 150 : 80;
                 }).strength(0.8))
                 .force("charge", d3.forceManyBody().strength(-350))
@@ -409,7 +249,6 @@
                 .selectAll("line")
                 .data(sponsorshipData.links)
                 .join("line")
-                // Aplicar classe com base no tipo de link
                 .attr("class", d => d.type === 'category' ? "category-link" : "link");
 
             const node = g.append("g")
@@ -430,7 +269,6 @@
                 .attr("x", d => d.type === 'sponsor' ? 24 : 16)
                 .attr("y", 4);
 
-            // Interatividade atualizada
             node.on("mouseover", function(event, d) {
                 tooltip.style("opacity", 1)
                        .html(`<strong>${d.id}</strong><br>${d.category || 'Patrocinador'}`)
@@ -438,14 +276,12 @@
                        .style("top", (event.pageY - 28) + "px");
 
                 if (d.type === 'sponsor') {
-                    // Sponsor highlighting behavior (original)
                     link.style('stroke-opacity', l => (l.source === d || l.target === d) ? 1 : 0.05);
                     node.style('opacity', n => {
                         const isConnected = sponsorshipData.links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
                         return (n === d || isConnected) ? 1 : 0.2;
                     });
                 } else {
-                    // Entity highlighting behavior (highlight all in same category and connected sponsors)
                     const categoryNodes = sponsorshipData.nodes.filter(n => n.category === d.category).map(n => n.id);
                     const connectedSponsors = [];
                     
@@ -491,7 +327,8 @@
                 node.attr("transform", d => `translate(${d.x},${d.y})`);
             });
         }
-
+        
+        // Função para arrastar os nós
         function drag(simulation) {
             function dragstarted(event, d) {
                 if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -512,32 +349,9 @@
                 .on("drag", dragged)
                 .on("end", dragended);
         }
-        
-        drawGraph();
-        window.addEventListener('resize', drawGraph);
 
-        // Mobile touch improvements
-        let touchStartX, touchStartY;
-        container.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        }, { passive: true });
-
-        container.addEventListener('touchmove', (e) => {
-            if (!touchStartX || !touchStartY) return;
-            e.preventDefault();
-            const touchEndX = e.touches[0].clientX;
-            const touchEndY = e.touches[0].clientY;
-            const dx = touchEndX - touchStartX;
-            const dy = touchEndY - touchStartY;
-            
-            // Get current transform
-            const currentTransform = d3.zoomTransform(svg.node());
-            svg.call(zoom.translateBy, -dx / currentTransform.k, -dy / currentTransform.k);
-            
-            touchStartX = touchEndX;
-            touchStartY = touchEndY;
-        }, { passive: false });
+        // Inicia todo o processo
+        iniciarVisualizacao();
 
     </script>
 </body>
