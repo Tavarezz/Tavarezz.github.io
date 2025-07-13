@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -100,10 +99,10 @@
         }
         .tooltip {
             position: absolute;
-            text-align: left; /* Alinhado à esquerda para melhor leitura das métricas */
+            text-align: center;
             padding: 12px 16px;
             font-size: 14px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.8);
             color: #fff;
             border-radius: 8px;
             pointer-events: none;
@@ -111,22 +110,13 @@
             transition: opacity 0.2s;
             backdrop-filter: blur(4px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-width: 280px; /* Aumenta a largura máxima */
-            line-height: 1.6;
+            max-width: 200px;
+            line-height: 1.5;
         }
         .tooltip strong {
             color: #fbbf24;
             display: block;
-            margin-bottom: 8px;
-            font-size: 16px;
-        }
-        .tooltip .metric {
-            font-size: 12px;
-            color: #d1d5db; /* cinza claro para as métricas */
-        }
-        .tooltip .metric-value {
-            color: #ffffff;
-            font-weight: 600;
+            margin-bottom: 4px;
         }
         .category-legend {
             display: flex;
@@ -165,13 +155,13 @@
     <div class="max-w-7xl mx-auto">
         <header class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-3">Rede de Patrocínios no Brasil</h1>
-            <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">Explore as conexões e métricas de rede entre marcas e entidades patrocinadas.</p>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">Explore as conexões entre marcas e entidades patrocinadas por casas de apostas.</p>
             <div class="mt-4 bg-blue-50 border border-blue-100 rounded-lg p-3 inline-block">
                 <p class="text-sm text-blue-800 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Passe o mouse sobre os nós para ver as métricas de rede. Arraste para reposicionar.
+                    Passe o mouse sobre os nós para destacar conexões. Arraste para reposicionar.
                 </p>
             </div>
         </header>
@@ -188,18 +178,15 @@
     </div>
 
     <script type="module">
-        // --- 2. IMPORTANDO MÓDULOS PELA CDN UNPKG (MAIS ESTÁVEL) ---
-        import Graph from 'https://unpkg.com/graphology@0.25.4/index.js';
-        import { assign as assignBetweennessCentrality } from 'https://unpkg.com/graphology-metrics@2.2.0/centrality/betweenness.js';
-        import localClusteringCoefficient from 'https://unpkg.com/graphology-metrics@2.2.0/clustering/local.js';
+        let sponsorshipData; // Make data available globally
 
-
-        let sponsorshipData;
-
+        // Função principal que inicia o carregamento dos dados e a visualização
         async function iniciarVisualizacao() {
+            // 1. Carregar os dados do arquivo JSON
             const response = await fetch('data.json');
             sponsorshipData = await response.json();
             
+            // --- LÓGICA PARA CRIAR LINKS DE CATEGORIA (movida para dentro da função) ---
             const nodesByCategory = sponsorshipData.nodes
                 .filter(node => node.type === 'entity')
                 .reduce((acc, node) => {
@@ -210,6 +197,7 @@
                     acc[category].push(node.id);
                     return acc;
                 }, {});
+
             const categoryLinks = [];
             for (const category in nodesByCategory) {
                 const ids = nodesByCategory[category];
@@ -223,51 +211,27 @@
                     }
                 }
             }
-            const visualizationLinks = [...sponsorshipData.links, ...categoryLinks];
+            sponsorshipData.links.push(...categoryLinks);
+            // --- FIM DA LÓGICA DE LINKS ---
 
-            const graph = new Graph({ type: 'undirected' });
-
-            sponsorshipData.nodes.forEach(node => {
-                graph.addNode(node.id, { ...node });
-            });
-
-            sponsorshipData.links.forEach(link => {
-                if (graph.hasNode(link.source) && graph.hasNode(link.target)) {
-                    graph.addDirectedEdge(link.source, link.target);
-                }
-            });
-            
-            assignBetweennessCentrality(graph);
-            
-            graph.forEachNode((node, attributes) => {
-                const degree = graph.degree(node);
-                const clustering = localClusteringCoefficient(graph, node);
-
-                const d3Node = sponsorshipData.nodes.find(n => n.id === node);
-                if (d3Node) {
-                    d3Node.metrics = {
-                        degree: degree,
-                        betweenness: attributes.betweennessCentrality,
-                        clustering: clustering
-                    };
-                }
-            });
-
-            drawGraph({ nodes: sponsorshipData.nodes, links: visualizationLinks });
-            
-            window.addEventListener('resize', () => drawGraph({ nodes: sponsorshipData.nodes, links: visualizationLinks }));
+            // 2. Chamar a função para desenhar o gráfico com os dados carregados
+            drawGraph(sponsorshipData);
+            // Adicionar listener para redimensionar a janela
+            window.addEventListener('resize', () => drawGraph(sponsorshipData));
         }
 
-        function drawGraph(data) {
+        // A função `drawGraph` agora recebe os dados como um parâmetro
+        function drawGraph(sponsorshipData) {
             const container = document.getElementById('graph');
-            container.innerHTML = ''; 
+            container.innerHTML = ''; // Limpa o container antes de redesenhar
             const tooltip = d3.select(".tooltip");
 
             const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
             
-            const categories = [...new Set(data.nodes.filter(n => n.type === 'entity').map(n => n.category))];
+            const categories = [...new Set(sponsorshipData.nodes.filter(n => n.type === 'entity').map(n => n.category))];
             categories.forEach(category => colorScale(category));
             
+            // Desenha a legenda (apenas se não existir para evitar duplicatas ao redimensionar)
             if (d3.select("#legend-container .category-legend").empty()) {
                 const legendContainer = d3.select("#legend-container");
                 const legend = legendContainer.append("div").attr("class", "category-legend");
@@ -276,12 +240,25 @@
                     .enter()
                     .append("div")
                     .attr("class", "legend-item");
+
                 legendItems.append("div")
                     .attr("class", "legend-color")
                     .style("background-color", d => colorScale(d));
+                
                 legendItems.append("span")
                     .text(d => d)
                     .attr("class", "legend-text");
+
+                // Add event listeners to legend items
+                legendItems.on("mouseover", function(event, category) {
+                    highlightCategory(category);
+                })
+                .on("mouseout", function() {
+                    resetHighlight();
+                })
+                .on("click", function(event, category) {
+                    highlightCategory(category);
+                });
             }
 
             const width = container.clientWidth;
@@ -295,6 +272,7 @@
             
             const g = svg.append("g");
 
+            // Configuração do Zoom
             const zoom = d3.zoom()
                 .scaleExtent([0.1, 8])
                 .on('zoom', (event) => {
@@ -308,8 +286,8 @@
             document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
 
 
-            const simulation = d3.forceSimulation(data.nodes)
-                .force("link", d3.forceLink(data.links).id(d => d.id).distance(d => {
+            const simulation = d3.forceSimulation(sponsorshipData.nodes)
+                .force("link", d3.forceLink(sponsorshipData.links).id(d => d.id).distance(d => {
                     if (d.type === 'category') return 50;
                     return d.source.type === 'sponsor' ? 150 : 80;
                 }).strength(0.8))
@@ -320,13 +298,13 @@
 
             const link = g.append("g")
                 .selectAll("line")
-                .data(data.links)
+                .data(sponsorshipData.links)
                 .join("line")
                 .attr("class", d => d.type === 'category' ? "category-link" : "link");
 
             const node = g.append("g")
                 .selectAll("g")
-                .data(data.nodes)
+                .data(sponsorshipData.nodes)
                 .join("g")
                 .attr("class", "node")
                 .call(drag(simulation));
@@ -343,33 +321,45 @@
                 .attr("y", 4);
 
             node.on("mouseover", function(event, d) {
-                let tooltipHtml = `<strong>${d.id}</strong><div class='text-sm text-gray-300 mb-2'>${d.category || 'Patrocinador'}</div>`;
-                if (d.metrics) {
-                    tooltipHtml += `<div class="metric">Grau: <span class="metric-value">${d.metrics.degree}</span></div>`;
-                    tooltipHtml += `<div class="metric">Intermediação: <span class="metric-value">${d.metrics.betweenness.toFixed(4)}</span></div>`;
-                    tooltipHtml += `<div class="metric">Agrupamento: <span class="metric-value">${d.metrics.clustering.toFixed(4)}</span></div>`;
-                }
-
                 tooltip.style("opacity", 1)
-                       .html(tooltipHtml)
+                       .html(`<strong>${d.id}</strong><br>${d.category || 'Patrocinador'}`)
                        .style("left", (event.pageX + 15) + "px")
                        .style("top", (event.pageY - 28) + "px");
-                
+
                 if (d.type === 'sponsor') {
                     link.style('stroke-opacity', l => (l.source === d || l.target === d) ? 1 : 0.05);
                     node.style('opacity', n => {
-                        const isConnected = data.links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
+                        const isConnected = sponsorshipData.links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
                         return (n === d || isConnected) ? 1 : 0.2;
                     });
                 } else {
-                    const categoryNodes = data.nodes.filter(n => n.category === d.category).map(n => n.id);
+                    const categoryNodes = sponsorshipData.nodes.filter(n => n.category === d.category).map(n => n.id);
                     const connectedSponsors = [];
-                    data.links.forEach(l => {
-                        if (categoryNodes.includes(l.source.id) && l.target.type === 'sponsor') connectedSponsors.push(l.target.id);
-                        if (categoryNodes.includes(l.target.id) && l.source.type === 'sponsor') connectedSponsors.push(l.source.id);
+                    
+                    sponsorshipData.links.forEach(l => {
+                        if (categoryNodes.includes(l.source.id)) {
+                            if (l.target.type === 'sponsor') connectedSponsors.push(l.target.id);
+                        }
+                        if (categoryNodes.includes(l.target.id)) {
+                            if (l.source.type === 'sponsor') connectedSponsors.push(l.source.id);
+                        }
                     });
-                    link.style('stroke-opacity', l => (l.source === d || l.target === d || categoryNodes.includes(l.source.id) || categoryNodes.includes(l.target.id) || connectedSponsors.includes(l.source.id) || connectedSponsors.includes(l.target.id)) ? 1 : 0.05);
-                    node.style('opacity', n => (n === d || n.category === d.category || connectedSponsors.includes(n.id)) ? 1 : 0.2);
+
+                    link.style('stroke-opacity', l => (
+                        l.source === d || l.target === d || 
+                        categoryNodes.includes(l.source.id) || 
+                        categoryNodes.includes(l.target.id) ||
+                        connectedSponsors.includes(l.source.id) ||
+                        connectedSponsors.includes(l.target.id)
+                    ) ? 1 : 0.05);
+
+                    node.style('opacity', n => {
+                        return (
+                            n === d || 
+                            n.category === d.category ||
+                            connectedSponsors.includes(n.id)
+                        ) ? 1 : 0.2;
+                    });
                 }
 
             }).on("mouseout", function() {
@@ -379,29 +369,86 @@
             });
 
             simulation.on("tick", () => {
-                link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
                 node.attr("transform", d => `translate(${d.x},${d.y})`);
             });
         }
         
+        // Função para arrastar os nós
         function drag(simulation) {
             function dragstarted(event, d) {
                 if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x; d.fy = d.y;
+                d.fx = d.x;
+                d.fy = d.y;
             }
             function dragged(event, d) {
-                d.fx = event.x; d.fy = event.y;
+                d.fx = event.x;
+                d.fy = event.y;
             }
             function dragended(event, d) {
                 if (!event.active) simulation.alphaTarget(0);
-                d.fx = null; d.fy = null;
+                d.fx = null;
+                d.fy = null;
             }
-            return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
         }
-        
-        function highlightCategory(category) { /* ... */ }
-        function resetHighlight() { /* ... */ }
 
+        // Helper functions for category highlighting
+        function highlightCategory(category) {
+            const tooltip = d3.select(".tooltip");
+            const nodes = sponsorshipData.nodes;
+            const links = sponsorshipData.links;
+            
+            // Get all entity nodes in this category
+            const categoryNodes = nodes.filter(n => n.category === category).map(n => n.id);
+            
+            // Get connected sponsors
+            const connectedSponsors = [];
+            links.forEach(l => {
+                if (categoryNodes.includes(l.source.id) && l.target.type === 'sponsor') {
+                    connectedSponsors.push(l.target.id);
+                }
+                if (categoryNodes.includes(l.target.id) && l.source.type === 'sponsor') {
+                    connectedSponsors.push(l.source.id);
+                }
+            });
+
+            // Highlight logic
+            d3.selectAll(".link")
+                .style('stroke-opacity', l => (
+                    categoryNodes.includes(l.source.id) || 
+                    categoryNodes.includes(l.target.id) ||
+                    connectedSponsors.includes(l.source.id) ||
+                    connectedSponsors.includes(l.target.id)
+                ) ? 1 : 0.05);
+
+            d3.selectAll(".node")
+                .style('opacity', n => (
+                    n.category === category ||
+                    connectedSponsors.includes(n.id)
+                ) ? 1 : 0.2);
+
+            tooltip.style("opacity", 1)
+                .html(`<strong>${category}</strong><br>${categoryNodes.length} entidades relacionadas`)
+                .style("left", (event.pageX + 15) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        }
+
+        function resetHighlight() {
+            d3.select(".tooltip").style("opacity", 0);
+            d3.selectAll(".link").style('stroke-opacity', null);
+            d3.selectAll(".node").style('opacity', 1);
+        }
+
+        // Inicia todo o processo
         iniciarVisualizacao();
 
     </script>
