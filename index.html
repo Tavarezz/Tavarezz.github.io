@@ -249,8 +249,8 @@
             const tooltip = d3.select(".tooltip");
 
             // Cria uma escala de cores ordinal para as categorias.
-            // d3.schemeCategory10 é um conjunto de 12 cores pré-definidas.
-            const colorScale = d3.scaleOrdinal(d3.schemeSet3)
+            // d3.schemeCategory10 é um conjunto de 10 cores pré-definidas.
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
             
             // Extrai uma lista de categorias únicas dos nós do tipo 'entidade'
             const categories = [...new Set(sponsorshipData.nodes.filter(n => n.type === 'entity').map(n => n.category))];
