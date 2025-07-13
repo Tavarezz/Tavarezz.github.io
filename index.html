@@ -4,149 +4,164 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualização de Patrocínios de Casas de Apostas no Brasil</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
+    <script src="https://cdn.tailwindcss.com"></script> <script src="https://d3js.org/d3.v7.min.js"></script> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"> <style>
+        /* Define o estilo base do corpo da página */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
-            color: #1a202c;
+            font-family: 'Inter', sans-serif; /* Usa a fonte importada */
+            background-color: #f0f2f5; /* Define um fundo cinza claro */
+            color: #1a202c; /* Define a cor padrão do texto */
         }
+        /* Estilo para o contêiner principal do gráfico */
         .graph-container {
-            width: 100%;
-            height: 100vh;
-            min-height: 600px;
-            max-height: 100vh;
-            border-radius: 0.75rem;
-            background-color: #ffffff;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            position: relative;
-            overflow: hidden;
-            touch-action: none;
+            width: 100%; /* Ocupa toda a largura disponível */
+            height: 100vh; /* Ocupa toda a altura da tela */
+            min-height: 600px; /* Garante uma altura mínima */
+            max-height: 100vh; /* Limita a altura máxima à da tela */
+            border-radius: 0.75rem; /* Bordas arredondadas */
+            background-color: #ffffff; /* Fundo branco */
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* Sombra suave */
+            position: relative; /* Necessário para posicionar elementos filhos (como os controles de zoom) */
+            overflow: hidden; /* Esconde qualquer conteúdo que transborde */
+            touch-action: none; /* Desabilita ações de toque padrão do navegador (como scroll) para permitir o pan do D3 */
         }
+        /* Posicionamento dos botões de controle de zoom */
         .zoom-controls {
-            position: absolute;
-            right: 24px;
-            bottom: 24px;
-            z-index: 10;
-            display: flex;
+            position: absolute; /* Posicionamento absoluto em relação ao '.graph-container' */
+            right: 24px; /* Distância da direita */
+            bottom: 24px; /* Distância de baixo */
+            z-index: 10; /* Garante que fiquem acima do gráfico */
+            display: flex; /* Organiza os botões em uma coluna */
             flex-direction: column;
-            gap: 12px;
+            gap: 12px; /* Espaçamento entre os botões */
         }
+        /* Estilo base para os botões de zoom */
         .zoom-btn {
             width: 44px;
             height: 44px;
-            border-radius: 50%;
+            border-radius: 50%; /* Formato circular */
             background: white;
             border: none;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            user-select: none;
-            transition: all 0.2s ease;
+            cursor: pointer; /* Cursor de mãozinha */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra para dar profundidade */
+            user-select: none; /* Impede a seleção de texto do botão */
+            transition: all 0.2s ease; /* Transição suave para efeitos */
             color: #4b5563;
         }
+        /* Efeito ao passar o mouse sobre o botão de zoom */
         .zoom-btn:hover {
-            background: #f3f4f6;
-            transform: scale(1.05);
+            background: #f3f4f6; /* Cor de fundo levemente alterada */
+            transform: scale(1.05); /* Aumenta um pouco o tamanho */
         }
+        /* Efeito ao clicar no botão de zoom */
         .zoom-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.95); /* Diminui um pouco o tamanho para feedback visual */
         }
+        /* Ajustes de estilo para telas menores (responsividade) */
         @media (max-width: 768px) {
             .graph-container {
-                height: 70vh;
+                height: 70vh; /* Altura menor em dispositivos móveis */
                 min-height: 400px;
             }
             .node text {
-                font-size: 10px;
+                font-size: 10px; /* Fonte menor para os textos dos nós */
             }
             .zoom-controls {
-                right: 10px;
+                right: 10px; /* Menor espaçamento nas laterais */
                 bottom: 10px;
             }
             .zoom-btn {
-                width: 36px;
+                width: 36px; /* Botões de zoom menores */
                 height: 36px;
                 font-size: 18px;
             }
         }
+        /* Estilo para um nó (círculo + texto) do gráfico */
         .node {
-            cursor: pointer;
-            transition: opacity 0.2s ease-in-out;
+            cursor: pointer; /* Cursor de mãozinha ao passar o mouse */
+            transition: opacity 0.2s ease-in-out; /* Transição suave de opacidade */
         }
+        /* Estilo para o texto do nó */
         .node text {
-            pointer-events: none;
+            pointer-events: none; /* O texto não interfere nos eventos do mouse (o evento vai para o círculo) */
             font-size: 12px;
             font-weight: 500;
-            fill: #2d3748;
+            fill: #2d3748; /* Cor do texto */
+            /* Sombra de texto para melhorar a legibilidade sobre as linhas */
             text-shadow: 0 1px 2px #fff, 1px 0 2px #fff, 0 -1px 2px #fff, -1px 0 2px #fff;
         }
+        /* Estilo para as linhas de conexão (links) entre os nós */
         .link {
-            stroke: #cbd5e1;
-            stroke-opacity: 0.6;
-            transition: stroke-opacity 0.2s ease-in-out;
+            stroke: #cbd5e1; /* Cor da linha */
+            stroke-opacity: 0.6; /* Opacidade da linha */
+            transition: stroke-opacity 0.2s ease-in-out; /* Transição suave de opacidade */
         }
+        /* Estilo especial para links que conectam entidades da mesma categoria */
         .category-link {
-            stroke: #f59e0b; /* amber-500 */
+            stroke: #f59e0b; /* Cor laranja */
             stroke-opacity: 0.5;
-            stroke-dasharray: 4 2;
+            stroke-dasharray: 4 2; /* Linha tracejada */
             transition: stroke-opacity 0.2s ease-in-out;
         }
+        /* Estilo para a caixa de informações (tooltip) que aparece ao passar o mouse */
         .tooltip {
-            position: absolute;
+            position: absolute; /* Posicionamento livre na tela */
             text-align: center;
             padding: 12px 16px;
             font-size: 14px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            border-radius: 8px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-            backdrop-filter: blur(4px);
+            background: rgba(0, 0, 0, 0.8); /* Fundo escuro semitransparente */
+            color: #fff; /* Texto branco */
+            border-radius: 8px; /* Bordas arredondadas */
+            pointer-events: none; /* Não interfere nos eventos do mouse */
+            opacity: 0; /* Começa invisível */
+            transition: opacity 0.2s; /* Transição suave de opacidade */
+            backdrop-filter: blur(4px); /* Efeito de desfoque no fundo */
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             max-width: 200px;
             line-height: 1.5;
         }
+        /* Estilo para o título dentro do tooltip */
         .tooltip strong {
-            color: #fbbf24;
+            color: #fbbf24; /* Cor amarela para destaque */
             display: block;
             margin-bottom: 4px;
         }
+        /* Estilo para o contêiner da legenda de categorias */
         .category-legend {
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 1.5rem;
+            flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha */
+            justify-content: center; /* Centraliza os itens */
+            gap: 1.5rem; /* Espaçamento entre os itens */
             padding: 1.5rem;
             background: white;
             border-radius: 0.75rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin-bottom: 1.5rem;
         }
+        /* Estilo para cada item individual na legenda */
         .legend-item {
             display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            align-items: center; /* Alinha o círculo de cor e o texto verticalmente */
+            gap: 0.75rem; /* Espaçamento entre o círculo e o texto */
             padding: 0.5rem 1rem;
-            background: #f9fafb;
-            border-radius: 9999px;
-            transition: transform 0.2s;
+            background: #f9fafb; /* Fundo cinza muito claro */
+            border-radius: 9999px; /* Formato de pílula */
+            transition: transform 0.2s; /* Animação suave */
         }
+        /* Efeito de flutuação no item da legenda ao passar o mouse */
         .legend-item:hover {
             transform: translateY(-2px);
         }
+        /* Estilo para o círculo colorido na legenda */
         .legend-color {
             width: 1.25rem;
             height: 1.25rem;
-            border-radius: 50%;
+            border-radius: 50%; /* Círculo perfeito */
             border: 2px solid white;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Sombra sutil */
         }
     </style>
 </head>
@@ -178,18 +193,20 @@
     </div>
 
     <script type="module">
-        let sponsorshipData; // Make data available globally
+        // Declara a variável de dados no escopo global do módulo para que possa ser acessada por múltiplas funções
+        let sponsorshipData;
 
-        // Função principal que inicia o carregamento dos dados e a visualização
+        // Função principal assíncrona que carrega os dados e inicia a criação do gráfico.
         async function iniciarVisualizacao() {
-            // 1. Carregar os dados do arquivo JSON
+            // Carrega os dados de patrocínio a partir de um arquivo JSON externo.
             const response = await fetch('data.json');
             sponsorshipData = await response.json();
             
-            // --- LÓGICA PARA CRIAR LINKS DE CATEGORIA (movida para dentro da função) ---
+            // Lógica para criar links "virtuais" entre entidades da mesma categoria.
+            // Isso ajuda a agrupar visualmente nós relacionados na simulação de força.
             const nodesByCategory = sponsorshipData.nodes
-                .filter(node => node.type === 'entity')
-                .reduce((acc, node) => {
+                .filter(node => node.type === 'entity') // Filtra apenas nós do tipo 'entidade'
+                .reduce((acc, node) => { // Agrupa os IDs dos nós por categoria
                     const category = node.category;
                     if (!acc[category]) {
                         acc[category] = [];
@@ -198,219 +215,244 @@
                     return acc;
                 }, {});
 
+            // Cria os objetos de link de categoria
             const categoryLinks = [];
             for (const category in nodesByCategory) {
                 const ids = nodesByCategory[category];
-                if (ids.length > 1) {
+                if (ids.length > 1) { // Só cria links se houver mais de um item na categoria
                     for (let i = 0; i < ids.length - 1; i++) {
+                        // Conecta cada entidade à próxima da mesma categoria
                         categoryLinks.push({
                             source: ids[i],
                             target: ids[i + 1],
-                            type: 'category'
+                            type: 'category' // Um tipo especial para estilização diferenciada
                         });
                     }
                 }
             }
+            // Adiciona os novos links de categoria à lista principal de links
             sponsorshipData.links.push(...categoryLinks);
-            // --- FIM DA LÓGICA DE LINKS ---
 
-            // 2. Chamar a função para desenhar o gráfico com os dados carregados
+            // Chama a função que desenha o gráfico, passando os dados carregados e processados
             drawGraph(sponsorshipData);
-            // Adicionar listener para redimensionar a janela
+            // Adiciona um listener para o evento de redimensionamento da janela,
+            // para que o gráfico seja redesenhado e se ajuste ao novo tamanho.
             window.addEventListener('resize', () => drawGraph(sponsorshipData));
         }
 
-        // A função `drawGraph` agora recebe os dados como um parâmetro
+        // Função que desenha/redesenha o gráfico D3
         function drawGraph(sponsorshipData) {
+            // Seleciona o contêiner do gráfico e o limpa completamente para evitar sobreposição ao redimensionar
             const container = document.getElementById('graph');
-            container.innerHTML = ''; // Limpa o container antes de redesenhar
+            container.innerHTML = '';
+            // Seleciona o elemento tooltip para uso posterior
             const tooltip = d3.select(".tooltip");
 
-            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            // Cria uma escala de cores ordinal para as categorias.
+            // d3.schemeCategory10 é um conjunto de 12 cores pré-definidas.
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory12);
             
+            // Extrai uma lista de categorias únicas dos nós do tipo 'entidade'
             const categories = [...new Set(sponsorshipData.nodes.filter(n => n.type === 'entity').map(n => n.category))];
+            // Alimenta a escala de cores com as categorias para garantir consistência
             categories.forEach(category => colorScale(category));
             
-            // Desenha a legenda (apenas se não existir para evitar duplicatas ao redimensionar)
+            // Desenha a legenda, mas apenas na primeira vez (evita duplicatas ao redimensionar)
             if (d3.select("#legend-container .category-legend").empty()) {
                 const legendContainer = d3.select("#legend-container");
                 const legend = legendContainer.append("div").attr("class", "category-legend");
+                
+                // Usa o padrão de entrada/atualização/saída do D3 para criar os itens da legenda
                 const legendItems = legend.selectAll(".legend-item")
                     .data(categories)
                     .enter()
                     .append("div")
                     .attr("class", "legend-item");
 
+                // Adiciona o círculo colorido a cada item da legenda
                 legendItems.append("div")
                     .attr("class", "legend-color")
-                    .style("background-color", d => colorScale(d));
+                    .style("background-color", d => colorScale(d)); // A cor é definida pela escala
                 
+                // Adiciona o nome da categoria como texto
                 legendItems.append("span")
                     .text(d => d)
                     .attr("class", "legend-text");
 
-                // Add event listeners to legend items
+                // Adiciona eventos de mouse aos itens da legenda para interatividade
                 legendItems.on("mouseover", function(event, category) {
-                    highlightCategory(category);
+                    highlightCategory(category); // Destaca a categoria no gráfico
                 })
                 .on("mouseout", function() {
-                    resetHighlight();
+                    resetHighlight(); // Remove o destaque
                 })
                 .on("click", function(event, category) {
-                    highlightCategory(category);
+                    highlightCategory(category); // Também destaca ao clicar
                 });
             }
 
+            // Obtém as dimensões do contêiner para configurar o SVG
             const width = container.clientWidth;
             const height = container.clientHeight;
 
+            // Cria o elemento SVG principal dentro do contêiner
             const svg = d3.select(container)
                 .append("svg")
-                .attr("viewBox", [0, 0, width, height])
+                .attr("viewBox", [0, 0, width, height]) // Permite que o SVG seja responsivo
                 .attr("width", width)
                 .attr("height", height);
             
+            // Cria um grupo <g> dentro do SVG que conterá todos os elementos do gráfico
+            // Isso é útil para aplicar transformações (como zoom) a todos os elementos de uma vez
             const g = svg.append("g");
 
-            // Configuração do Zoom
+            // Configura o comportamento de zoom e pan (arrastar)
             const zoom = d3.zoom()
-                .scaleExtent([0.1, 8])
+                .scaleExtent([0.1, 8]) // Define os limites mínimo e máximo de zoom
                 .on('zoom', (event) => {
-                    g.attr('transform', event.transform);
+                    g.attr('transform', event.transform); // Aplica a transformação de zoom/pan ao grupo <g>
                 });
 
+            // Aplica o comportamento de zoom ao SVG
             svg.call(zoom);
 
-            document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.2);
-            document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.8);
-            document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
+            // Conecta os botões HTML às funções de zoom do D3
+            document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.2); // Aumenta o zoom
+            document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.8); // Diminui o zoom
+            document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity); // Reseta para a visualização inicial
 
 
+            // Configura a simulação de força que posicionará os nós e links
             const simulation = d3.forceSimulation(sponsorshipData.nodes)
+                // Força de link: puxa os nós conectados para perto uns dos outros
                 .force("link", d3.forceLink(sponsorshipData.links).id(d => d.id).distance(d => {
-                    if (d.type === 'category') return 50;
-                    return d.source.type === 'sponsor' ? 150 : 80;
-                }).strength(0.8))
+                    if (d.type === 'category') return 50; // Links de categoria são mais curtos
+                    return d.source.type === 'sponsor' ? 150 : 80; // Links de patrocinador são mais longos
+                }).strength(0.8)) // Força da "mola"
+                // Força de carga: faz com que os nós se repelem para não se sobreporem
                 .force("charge", d3.forceManyBody().strength(-350))
+                // Força de centro: puxa todos os nós em direção ao centro do SVG
                 .force("center", d3.forceCenter(width / 2, height / 2))
+                // Forças de posicionamento X e Y: ajudam a manter os nós dentro da área visível
                 .force("x", d3.forceX())
                 .force("y", d3.forceY());
 
+            // Cria os elementos <line> para cada link nos dados
             const link = g.append("g")
                 .selectAll("line")
                 .data(sponsorshipData.links)
                 .join("line")
-                .attr("class", d => d.type === 'category' ? "category-link" : "link");
+                .attr("class", d => d.type === 'category' ? "category-link" : "link"); // Aplica a classe CSS correta
 
+            // Cria um grupo <g> para cada nó nos dados
             const node = g.append("g")
                 .selectAll("g")
                 .data(sponsorshipData.nodes)
                 .join("g")
                 .attr("class", "node")
-                .call(drag(simulation));
+                .call(drag(simulation)); // Habilita o arrastar para os nós
 
+            // Adiciona um círculo a cada grupo de nó
             node.append("circle")
-                .attr("r", d => d.type === 'sponsor' ? 20 : 12)
-                .attr("fill", d => d.type === 'sponsor' ? '#1a202c' : colorScale(d.category))
+                .attr("r", d => d.type === 'sponsor' ? 20 : 12) // Patrocinadores são maiores
+                .attr("fill", d => d.type === 'sponsor' ? '#1a202c' : colorScale(d.category)) // Cor baseada no tipo ou categoria
                 .attr("stroke", "#fff")
                 .attr("stroke-width", 1.5);
 
+            // Adiciona o texto (ID do nó) a cada grupo de nó
             node.append("text")
                 .text(d => d.id)
-                .attr("x", d => d.type === 'sponsor' ? 24 : 16)
+                .attr("x", d => d.type === 'sponsor' ? 24 : 16) // Posição do texto relativa ao círculo
                 .attr("y", 4);
 
+            // Define os eventos de mouse para cada nó
             node.on("mouseover", function(event, d) {
+                // Mostra e posiciona o tooltip com as informações do nó
                 tooltip.style("opacity", 1)
                        .html(`<strong>${d.id}</strong><br>${d.category || 'Patrocinador'}`)
                        .style("left", (event.pageX + 15) + "px")
                        .style("top", (event.pageY - 28) + "px");
 
+                // Lógica de destaque quando o mouse está sobre um nó patrocinador
                 if (d.type === 'sponsor') {
+                    // Aumenta a opacidade dos links diretamente conectados e diminui a dos outros
                     link.style('stroke-opacity', l => (l.source === d || l.target === d) ? 1 : 0.05);
+                    // Aumenta a opacidade dos nós diretamente conectados e diminui a dos outros
                     node.style('opacity', n => {
                         const isConnected = sponsorshipData.links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
                         return (n === d || isConnected) ? 1 : 0.2;
                     });
-                } else {
+                } else { // Lógica de destaque quando o mouse está sobre um nó de entidade
+                    // Encontra todos os nós da mesma categoria
                     const categoryNodes = sponsorshipData.nodes.filter(n => n.category === d.category).map(n => n.id);
                     const connectedSponsors = [];
-                    
+                    // Encontra todos os patrocinadores conectados a essa categoria
                     sponsorshipData.links.forEach(l => {
-                        if (categoryNodes.includes(l.source.id)) {
-                            if (l.target.type === 'sponsor') connectedSponsors.push(l.target.id);
-                        }
-                        if (categoryNodes.includes(l.target.id)) {
-                            if (l.source.type === 'sponsor') connectedSponsors.push(l.source.id);
-                        }
+                        if (categoryNodes.includes(l.source.id) && l.target.type === 'sponsor') connectedSponsors.push(l.target.id);
+                        if (categoryNodes.includes(l.target.id) && l.source.type === 'sponsor') connectedSponsors.push(l.source.id);
                     });
-
-                    link.style('stroke-opacity', l => (
-                        l.source === d || l.target === d || 
-                        categoryNodes.includes(l.source.id) || 
-                        categoryNodes.includes(l.target.id) ||
-                        connectedSponsors.includes(l.source.id) ||
-                        connectedSponsors.includes(l.target.id)
-                    ) ? 1 : 0.05);
-
-                    node.style('opacity', n => {
-                        return (
-                            n === d || 
-                            n.category === d.category ||
-                            connectedSponsors.includes(n.id)
-                        ) ? 1 : 0.2;
-                    });
+                    // Destaca todos os links e nós relacionados à categoria e seus patrocinadores
+                    link.style('stroke-opacity', l => (l.source === d || l.target === d || categoryNodes.includes(l.source.id) || categoryNodes.includes(l.target.id) || connectedSponsors.includes(l.source.id) || connectedSponsors.includes(l.target.id)) ? 1 : 0.05);
+                    node.style('opacity', n => (n === d || n.category === d.category || connectedSponsors.includes(n.id)) ? 1 : 0.2);
                 }
 
             }).on("mouseout", function() {
+                // Esconde o tooltip
                 tooltip.style("opacity", 0);
+                // Reseta a opacidade de todos os links e nós para o padrão
                 link.style('stroke-opacity', null);
                 node.style('opacity', 1);
             });
 
+            // A cada "tick" (passo) da simulação de força, atualiza as posições dos elementos SVG
             simulation.on("tick", () => {
+                // Atualiza as coordenadas das linhas
                 link
                     .attr("x1", d => d.source.x)
                     .attr("y1", d => d.source.y)
                     .attr("x2", d => d.target.x)
                     .attr("y2", d => d.target.y);
-
+                // Atualiza a posição dos grupos de nós
                 node.attr("transform", d => `translate(${d.x},${d.y})`);
             });
         }
         
-        // Função para arrastar os nós
+        // Função que define o comportamento de arrastar os nós
         function drag(simulation) {
+            // No início do arrasto, "acorda" a simulação e fixa a posição do nó
             function dragstarted(event, d) {
                 if (!event.active) simulation.alphaTarget(0.3).restart();
                 d.fx = d.x;
                 d.fy = d.y;
             }
+            // Durante o arrasto, atualiza a posição fixa do nó para a posição do mouse
             function dragged(event, d) {
                 d.fx = event.x;
                 d.fy = event.y;
             }
+            // No final do arrasto, "libera" o nó (remove a posição fixa) e acalma a simulação
             function dragended(event, d) {
                 if (!event.active) simulation.alphaTarget(0);
                 d.fx = null;
                 d.fy = null;
             }
+            // Retorna o comportamento de arrastar configurado
             return d3.drag()
                 .on("start", dragstarted)
                 .on("drag", dragged)
                 .on("end", dragended);
         }
 
-        // Helper functions for category highlighting
+        // Função auxiliar para destacar uma categoria inteira (usada pela legenda)
         function highlightCategory(category) {
             const tooltip = d3.select(".tooltip");
             const nodes = sponsorshipData.nodes;
             const links = sponsorshipData.links;
             
-            // Get all entity nodes in this category
+            // Obtém todos os nós da categoria selecionada
             const categoryNodes = nodes.filter(n => n.category === category).map(n => n.id);
             
-            // Get connected sponsors
+            // Obtém todos os patrocinadores conectados a essa categoria
             const connectedSponsors = [];
             links.forEach(l => {
                 if (categoryNodes.includes(l.source.id) && l.target.type === 'sponsor') {
@@ -421,34 +463,28 @@
                 }
             });
 
-            // Highlight logic
+            // Lógica de destaque visual (semelhante ao mouseover de um nó de entidade)
             d3.selectAll(".link")
-                .style('stroke-opacity', l => (
-                    categoryNodes.includes(l.source.id) || 
-                    categoryNodes.includes(l.target.id) ||
-                    connectedSponsors.includes(l.source.id) ||
-                    connectedSponsors.includes(l.target.id)
-                ) ? 1 : 0.05);
+                .style('stroke-opacity', l => (categoryNodes.includes(l.source.id) || categoryNodes.includes(l.target.id) || connectedSponsors.includes(l.source.id) || connectedSponsors.includes(l.target.id)) ? 1 : 0.05);
 
             d3.selectAll(".node")
-                .style('opacity', n => (
-                    n.category === category ||
-                    connectedSponsors.includes(n.id)
-                ) ? 1 : 0.2);
+                .style('opacity', n => (n.category === category || connectedSponsors.includes(n.id)) ? 1 : 0.2);
 
+            // Mostra um tooltip geral para a categoria
             tooltip.style("opacity", 1)
                 .html(`<strong>${category}</strong><br>${categoryNodes.length} entidades relacionadas`)
                 .style("left", (event.pageX + 15) + "px")
                 .style("top", (event.pageY - 28) + "px");
         }
-
+        
+        // Função auxiliar para resetar o destaque da categoria
         function resetHighlight() {
             d3.select(".tooltip").style("opacity", 0);
             d3.selectAll(".link").style('stroke-opacity', null);
             d3.selectAll(".node").style('opacity', 1);
         }
 
-        // Inicia todo o processo
+        // Chama a função principal para iniciar todo o processo de visualização.
         iniciarVisualizacao();
 
     </script>
