@@ -1,41 +1,3 @@
-You've found a common issue when using `graphology` plugins via a CDN. The error `graphology.metrics is undefined` occurs because the metrics library creates its own separate global variable, called **`graphologyMetrics`**, instead of attaching itself to the main `graphology` object.
-
-To fix this, you just need to get the metric functions from the correct global object.
-
------
-
-### **The Correction**
-
-You need to change the first few lines inside your `<script type="module">` tag.
-
-**Change this:**
-
-```javascript
-// Torna as bibliotecas globais acessíveis no módulo
-const Graph = graphology;
-const { astar, betweennessCentrality } = graphology.metrics.centrality;
-const { localClusteringCoefficient } = graphology.metrics.clustering;
-```
-
-**To this:**
-
-```javascript
-// Torna as bibliotecas globais acessíveis no módulo
-const Graph = graphology; // O objeto principal
-// A biblioteca de métricas cria seu próprio objeto global: graphologyMetrics
-const { betweennessCentrality } = graphologyMetrics.centrality;
-const { localClusteringCoefficient } = graphologyMetrics.clustering;
-```
-
-As you can see, we are now correctly sourcing the functions from `graphologyMetrics`. The `astar` function wasn't being used, so it was removed for clarity.
-
------
-
-### **Full Corrected Code**
-
-Here is the complete, corrected `index.html` file for your convenience.
-
-```html
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -46,9 +8,6 @@ Here is the complete, corrected `index.html` file for your convenience.
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
-    <script src="https://cdn.jsdelivr.net/npm/graphology@0.25.4/dist/graphology.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/graphology-metrics@2.2.0/dist/graphology-metrics.umd.min.js"></script>
-
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -230,12 +189,10 @@ Here is the complete, corrected `index.html` file for your convenience.
 
     <script type="module">
         // --- CORREÇÃO APLICADA AQUI ---
-        // Torna as bibliotecas globais acessíveis no módulo
-        const Graph = graphology; // O objeto principal
-        // A biblioteca de métricas cria seu próprio objeto global: graphologyMetrics
-        const { betweennessCentrality } = graphologyMetrics.centrality;
-        const { localClusteringCoefficient } = graphologyMetrics.clustering;
-
+        // Importa as bibliotecas como Módulos ES, que é mais moderno e confiável.
+        import Graph from 'https://esm.sh/graphology@0.25.4';
+        import { betweennessCentrality } from 'https://esm.sh/graphology-metrics@2.2.0/centrality/betweenness';
+        import { localClusteringCoefficient } from 'https://esm.sh/graphology-metrics@2.2.0/clustering/local';
 
         let sponsorshipData; // Make data available globally
 
@@ -407,9 +364,7 @@ Here is the complete, corrected `index.html` file for your convenience.
                 .attr("x", d => d.type === 'sponsor' ? 24 : 16)
                 .attr("y", 4);
 
-            // --- PASSO 5: EXIBIR MÉTRICAS NO TOOLTIP ---
             node.on("mouseover", function(event, d) {
-                // Constrói o HTML do tooltip com as métricas
                 let tooltipHtml = `<strong>${d.id}</strong><div class='text-sm text-gray-300 mb-2'>${d.category || 'Patrocinador'}</div>`;
                 if (d.metrics) {
                     tooltipHtml += `<div class="metric">Grau: <span class="metric-value">${d.metrics.degree}</span></div>`;
@@ -421,8 +376,7 @@ Here is the complete, corrected `index.html` file for your convenience.
                        .html(tooltipHtml)
                        .style("left", (event.pageX + 15) + "px")
                        .style("top", (event.pageY - 28) + "px");
-
-                // O resto da lógica de highlight permanece a mesma
+                
                 if (d.type === 'sponsor') {
                     link.style('stroke-opacity', l => (l.source === d || l.target === d) ? 1 : 0.05);
                     node.style('opacity', n => {
@@ -466,8 +420,7 @@ Here is the complete, corrected `index.html` file for your convenience.
             }
             return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
         }
-
-        // As funções de highlight da legenda não precisam de alteração
+        
         function highlightCategory(category) { /* ... */ }
         function resetHighlight() { /* ... */ }
 
@@ -488,4 +441,3 @@ Here is the complete, corrected `index.html` file for your convenience.
 
 </body>
 </html>
-```
