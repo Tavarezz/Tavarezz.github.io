@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -188,11 +188,10 @@
     </div>
 
     <script type="module">
-        // --- CORREÇÃO APLICADA AQUI ---
-        // Importa as bibliotecas como Módulos ES, que é mais moderno e confiável.
-        import Graph from 'https://esm.sh/graphology@0.25.4';
-        import { betweennessCentrality } from 'https://esm.sh/graphology-metrics@2.2.0/centrality/betweenness';
-        import { localClusteringCoefficient } from 'https://esm.sh/graphology-metrics@2.2.0/clustering/local';
+        // --- 2. IMPORTANDO MÓDULOS PELA CDN JSDELIVR (MAIS ESTÁVEL) ---
+        import Graph from 'https://cdn.jsdelivr.net/npm/graphology@0.25.4/+esm'
+        import { assign as assignBetweennessCentrality } from 'https://cdn.jsdelivr.net/npm/graphology-metrics@2.2.0/centrality/betweenness.js/+esm';
+        import localClusteringCoefficient from 'https://cdn.jsdelivr.net/npm/graphology-metrics@2.2.0/clustering/local.js/+esm';
 
         let sponsorshipData; // Make data available globally
 
@@ -202,7 +201,6 @@
             const response = await fetch('data.json');
             sponsorshipData = await response.json();
             
-            // LÓGICA PARA CRIAR LINKS DE CATEGORIA
             const nodesByCategory = sponsorshipData.nodes
                 .filter(node => node.type === 'entity')
                 .reduce((acc, node) => {
@@ -226,43 +224,28 @@
                     }
                 }
             }
-            // Não adiciona os links de categoria ao grafo de análise, apenas ao de visualização
             const visualizationLinks = [...sponsorshipData.links, ...categoryLinks];
 
-
-            // --- PASSO 2: CRIAR O GRAFO E CALCULAR AS MÉTRICAS ---
-            
-            // Usamos um grafo não-direcionado para a maioria das métricas de centralidade
             const graph = new Graph({ type: 'undirected' });
 
-            // Adicionar nós ao grafo graphology
             sponsorshipData.nodes.forEach(node => {
-                graph.addNode(node.id, { ...node }); // Copia todos os atributos
+                graph.addNode(node.id, { ...node });
             });
 
-            // Adicionar apenas os links de patrocínio reais para o cálculo das métricas
             sponsorshipData.links.forEach(link => {
-                // Evita erro caso um nó do link não exista no grafo
                 if (graph.hasNode(link.source) && graph.hasNode(link.target)) {
                     graph.addDirectedEdge(link.source, link.target);
                 }
             });
-
-            // --- PASSO 3: CALCULAR AS MÉTRICAS ---
             
             // Calcula a centralidade de intermediação para todos os nós
-            betweennessCentrality.assign(graph);
+            // Renomeamos a importação para "assignBetweennessCentrality" para evitar conflito de nomes
+            assignBetweennessCentrality(graph);
             
-            // Calcula e atribui grau e coeficiente de agrupamento para cada nó
             graph.forEachNode((node, attributes) => {
-                // Grau (Degree): Número de conexões de um nó.
                 const degree = graph.degree(node);
-                
-                // Coeficiente de Agrupamento Local: Mede o quão perto os vizinhos de um nó estão de serem um clique (totalmente conectados).
                 const clustering = localClusteringCoefficient(graph, node);
 
-                // --- PASSO 4: ANEXAR MÉTRICAS AOS DADOS ORIGINAIS ---
-                // Encontra o nó correspondente nos dados do D3 e anexa as métricas
                 const d3Node = sponsorshipData.nodes.find(n => n.id === node);
                 if (d3Node) {
                     d3Node.metrics = {
@@ -273,10 +256,8 @@
                 }
             });
 
-            // 2. Chamar a função para desenhar o gráfico com os dados carregados e enriquecidos
             drawGraph({ nodes: sponsorshipData.nodes, links: visualizationLinks });
             
-            // Adicionar listener para redimensionar a janela
             window.addEventListener('resize', () => drawGraph({ nodes: sponsorshipData.nodes, links: visualizationLinks }));
         }
 
