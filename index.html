@@ -1,3 +1,41 @@
+You've found a common issue when using `graphology` plugins via a CDN. The error `graphology.metrics is undefined` occurs because the metrics library creates its own separate global variable, called **`graphologyMetrics`**, instead of attaching itself to the main `graphology` object.
+
+To fix this, you just need to get the metric functions from the correct global object.
+
+-----
+
+### **The Correction**
+
+You need to change the first few lines inside your `<script type="module">` tag.
+
+**Change this:**
+
+```javascript
+// Torna as bibliotecas globais acessíveis no módulo
+const Graph = graphology;
+const { astar, betweennessCentrality } = graphology.metrics.centrality;
+const { localClusteringCoefficient } = graphology.metrics.clustering;
+```
+
+**To this:**
+
+```javascript
+// Torna as bibliotecas globais acessíveis no módulo
+const Graph = graphology; // O objeto principal
+// A biblioteca de métricas cria seu próprio objeto global: graphologyMetrics
+const { betweennessCentrality } = graphologyMetrics.centrality;
+const { localClusteringCoefficient } = graphologyMetrics.clustering;
+```
+
+As you can see, we are now correctly sourcing the functions from `graphologyMetrics`. The `astar` function wasn't being used, so it was removed for clarity.
+
+-----
+
+### **Full Corrected Code**
+
+Here is the complete, corrected `index.html` file for your convenience.
+
+```html
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -191,10 +229,12 @@
     </div>
 
     <script type="module">
+        // --- CORREÇÃO APLICADA AQUI ---
         // Torna as bibliotecas globais acessíveis no módulo
-        const Graph = graphology;
-        const { astar, betweennessCentrality } = graphology.metrics.centrality;
-        const { localClusteringCoefficient } = graphology.metrics.clustering;
+        const Graph = graphology; // O objeto principal
+        // A biblioteca de métricas cria seu próprio objeto global: graphologyMetrics
+        const { betweennessCentrality } = graphologyMetrics.centrality;
+        const { localClusteringCoefficient } = graphologyMetrics.clustering;
 
 
         let sponsorshipData; // Make data available globally
@@ -448,3 +488,4 @@
 
 </body>
 </html>
+```
