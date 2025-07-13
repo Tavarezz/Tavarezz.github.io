@@ -226,7 +226,23 @@
             container.innerHTML = ''; // Limpa o container antes de redesenhar
             const tooltip = d3.select(".tooltip");
 
-            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            // Cria uma escala de cores ordinal para as categorias.
+            const cores = [
+              "#9E0031", // Madder
+              "#6DC0D5", // Sky Blue
+              "#FFBF00", // Amber
+              "#E83F6F", // Cerise
+              "#0CCE6B", // Emerald
+              "#F26419", // Orange(Pantone)
+              "#0A014F", // Federal Blue
+              "#DCF763", // Mindaro
+              "#52489C", // Ultra Violet
+              "#32936F", // Sea Green
+              "#550C18", // Chocolate cosmos
+              "#2274A5"  // UCLA Blue   
+            ];
+            
+            const colorScale = d3.scaleOrdinal(cores);
             
             const categories = [...new Set(sponsorshipData.nodes.filter(n => n.type === 'entity').map(n => n.category))];
             categories.forEach(category => colorScale(category));
