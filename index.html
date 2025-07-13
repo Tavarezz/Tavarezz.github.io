@@ -178,11 +178,13 @@
     </div>
 
     <script type="module">
+        let sponsorshipData; // Make data available globally
+
         // Função principal que inicia o carregamento dos dados e a visualização
         async function iniciarVisualizacao() {
             // 1. Carregar os dados do arquivo JSON
             const response = await fetch('data.json');
-            const sponsorshipData = await response.json();
+            sponsorshipData = await response.json();
             
             // --- LÓGICA PARA CRIAR LINKS DE CATEGORIA (movida para dentro da função) ---
             const nodesByCategory = sponsorshipData.nodes
@@ -244,7 +246,19 @@
                     .style("background-color", d => colorScale(d));
                 
                 legendItems.append("span")
-                    .text(d => d);
+                    .text(d => d)
+                    .attr("class", "legend-text");
+
+                // Add event listeners to legend items
+                legendItems.on("mouseover", function(event, category) {
+                    highlightCategory(category);
+                })
+                .on("mouseout", function() {
+                    resetHighlight();
+                })
+                .on("click", function(event, category) {
+                    highlightCategory(category);
+                });
             }
 
             const width = container.clientWidth;
@@ -385,6 +399,53 @@
                 .on("start", dragstarted)
                 .on("drag", dragged)
                 .on("end", dragended);
+        }
+
+        // Helper functions for category highlighting
+        function highlightCategory(category) {
+            const tooltip = d3.select(".tooltip");
+            const nodes = sponsorshipData.nodes;
+            const links = sponsorshipData.links;
+            
+            // Get all entity nodes in this category
+            const categoryNodes = nodes.filter(n => n.category === category).map(n => n.id);
+            
+            // Get connected sponsors
+            const connectedSponsors = [];
+            links.forEach(l => {
+                if (categoryNodes.includes(l.source.id) && l.target.type === 'sponsor') {
+                    connectedSponsors.push(l.target.id);
+                }
+                if (categoryNodes.includes(l.target.id) && l.source.type === 'sponsor') {
+                    connectedSponsors.push(l.source.id);
+                }
+            });
+
+            // Highlight logic
+            d3.selectAll(".link")
+                .style('stroke-opacity', l => (
+                    categoryNodes.includes(l.source.id) || 
+                    categoryNodes.includes(l.target.id) ||
+                    connectedSponsors.includes(l.source.id) ||
+                    connectedSponsors.includes(l.target.id)
+                ) ? 1 : 0.05);
+
+            d3.selectAll(".node")
+                .style('opacity', n => (
+                    n.category === category ||
+                    connectedSponsors.includes(n.id)
+                ) ? 1 : 0.2);
+
+            tooltip.style("opacity", 1)
+                .html(`<strong>${category}</strong><br>${categoryNodes.length} entidades relacionadas`)
+                .style("left", (event.pageX + 15) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        }
+
+        function resetHighlight() {
+            d3.select(".tooltip").style("opacity", 0);
+            d3.selectAll(".link").style('stroke-opacity', null);
+            d3.selectAll(".node").style('opacity', 1);
         }
 
         // Inicia todo o processo
