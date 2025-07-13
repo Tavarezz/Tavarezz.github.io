@@ -1,6 +1,6 @@
 {
     "nodes": [
-                { "id": "Adriane Galisteu", "type": "entity", "category": "Influenciadores e TV" },
+        { "id": "Adriane Galisteu", "type": "entity", "category": "Influenciadores e TV" },
         { "id": "André Trindade", "type": "entity", "category": "Atletas em Atividade" },
         { "id": "Antonio Tabet", "type": "entity", "category": "Mídia e Jornalismo" },
         { "id": "Athletico-PR", "type": "entity", "category": "Clubes" },
