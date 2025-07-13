@@ -188,16 +188,15 @@
     </div>
 
     <script type="module">
-        // --- 2. IMPORTANDO MÓDULOS PELA CDN JSDELIVR (MAIS ESTÁVEL) ---
-        import Graph from 'https://cdn.jsdelivr.net/npm/graphology@0.25.4/+esm'
-        import { assign as assignBetweennessCentrality } from 'https://cdn.jsdelivr.net/npm/graphology-metrics@2.2.0/centrality/betweenness.js/+esm';
-        import localClusteringCoefficient from 'https://cdn.jsdelivr.net/npm/graphology-metrics@2.2.0/clustering/local.js/+esm';
+        // --- 2. IMPORTANDO MÓDULOS PELA CDN UNPKG (MAIS ESTÁVEL) ---
+        import Graph from 'https://unpkg.com/graphology@0.25.4/index.js';
+        import { assign as assignBetweennessCentrality } from 'https://unpkg.com/graphology-metrics@2.2.0/centrality/betweenness.js';
+        import localClusteringCoefficient from 'https://unpkg.com/graphology-metrics@2.2.0/clustering/local.js';
 
-        let sponsorshipData; // Make data available globally
 
-        // Função principal que inicia o carregamento dos dados e a visualização
+        let sponsorshipData;
+
         async function iniciarVisualizacao() {
-            // 1. Carregar os dados do arquivo JSON
             const response = await fetch('data.json');
             sponsorshipData = await response.json();
             
@@ -238,8 +237,6 @@
                 }
             });
             
-            // Calcula a centralidade de intermediação para todos os nós
-            // Renomeamos a importação para "assignBetweennessCentrality" para evitar conflito de nomes
             assignBetweennessCentrality(graph);
             
             graph.forEachNode((node, attributes) => {
