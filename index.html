@@ -176,6 +176,7 @@
             <button class="zoom-btn" id="zoom-in">+</button>
             <button class="zoom-btn" id="zoom-out">-</button>
             <button class="zoom-btn" id="zoom-reset">↻</button>
+            <button class="zoom-btn" id="save-btn" title="Salvar como PNG">💾</button>
         </div>
         <div class="tooltip"></div>
 
@@ -235,18 +236,9 @@
 
             // Cria uma escala de cores ordinal para as categorias.
             const cores = [
-              "#9E0031", // Madder
-              "#6DC0D5", // Sky Blue
-              "#FFBF00", // Amber
-              "#E83F6F", // Cerise
-              "#0CCE6B", // Emerald
-              "#F26419", // Orange(Pantone)
-              "#0A014F", // Federal Blue
-              "#DCF763", // Mindaro
-              "#52489C", // Ultra Violet
-              "#32936F", // Sea Green
-              "#550C18", // Chocolate cosmos
-              "#2274A5"  // UCLA Blue   
+              "#9E0031", "#6DC0D5", "#FFBF00", "#E83F6F", "#0CCE6B", 
+              "#F26419", "#0A014F", "#DCF763", "#52489C", "#32936F", 
+              "#550C18", "#2274A5"
             ];
             
             const colorScale = d3.scaleOrdinal(cores);
@@ -307,6 +299,7 @@
             document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.2);
             document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.8);
             document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
+            document.getElementById('save-btn').onclick = saveGraphAsPNG; // Conecta o botão de salvar
 
 
             const simulation = d3.forceSimulation(sponsorshipData.nodes)
@@ -471,6 +464,40 @@
             d3.selectAll(".node").style('opacity', 1);
         }
 
+        // Função para salvar o gráfico como PNG
+        function saveGraphAsPNG() {
+            const svgNode = d3.select("#graph svg").node();
+            const svgString = new XMLSerializer().serializeToString(svgNode);
+            const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(svgBlob);
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                // Usar as dimensões do SVG para garantir a qualidade
+                const width = svgNode.getAttribute('width');
+                const height = svgNode.getAttribute('height');
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext("2d");
+                // Adicionar um fundo branco
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, width, height);
+                URL.revokeObjectURL(url);
+
+                const link = document.createElement("a");
+                link.download = "grafo-patrocinios.png";
+                link.href = canvas.toDataURL("image/png");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+            img.src = url;
+        }
+
+
         // Funções para cálculo de métricas
         function calculateDegreeCentrality(nodes, links) {
             const degreeMap = new Map();
@@ -543,8 +570,7 @@
                         delta.set(
                             predecessor.id,
                             delta.get(predecessor.id) + 
-                            (sigma.get(predecessor.id) / sigma.get(current.id)) * 
-                            (1 + delta.get(current.id))
+                            (sigma.get(predecessor.id) / sigma.get(current.id)) * (1 + delta.get(current.id))
                         );
                     });
                     
@@ -673,3 +699,5 @@
             </a>
         </div>
     </footer>
+</body>
+</html>
