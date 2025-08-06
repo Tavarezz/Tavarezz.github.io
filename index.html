@@ -92,7 +92,7 @@
             transition: stroke-opacity 0.2s ease-in-out;
         }
         .category-link {
-            stroke: #f59e0b; /* amber-500 */
+            stroke: #f59e0b; /* Cor Laranja (amber-500) para links de categoria */
             stroke-opacity: 0.5;
             stroke-dasharray: 4 2;
             transition: stroke-opacity 0.2s ease-in-out;
@@ -183,15 +183,19 @@
     </div>
 
     <script type="module">
-        let sponsorshipData; // Make data available globally
+        // Variável para armazenar os dados do grafo, tornando-os acessíveis em todo o script.
+        let sponsorshipData;
 
-        // Função principal que inicia o carregamento dos dados e a visualização
+        /**
+         * Função principal que orquestra o carregamento dos dados e a renderização da visualização.
+         */
         async function iniciarVisualizacao() {
-            // 1. Carregar os dados do arquivo JSON
+            // 1. Carrega os dados de patrocínio a partir do arquivo JSON local.
             const response = await fetch('data.json');
             sponsorshipData = await response.json();
             
-            // --- LÓGICA PARA CRIAR LINKS DE CATEGORIA (movida para dentro da função) ---
+            // 2. Lógica para criar links que conectam entidades da mesma categoria.
+            // Isso agrupa visualmente os nós que pertencem à mesma área (ex: Clubes de Futebol).
             const nodesByCategory = sponsorshipData.nodes
                 .filter(node => node.type === 'entity')
                 .reduce((acc, node) => {
@@ -217,24 +221,28 @@
                 }
             }
             sponsorshipData.links.push(...categoryLinks);
-            // --- FIM DA LÓGICA DE LINKS ---
+            // Fim da lógica de criação de links de categoria.
 
-            // 2. Chamar a função para desenhar o gráfico com os dados carregados
+            // 3. Renderiza o grafo principal com os dados processados.
             drawGraph(sponsorshipData);
             
-            // 3. Calcular e exibir métricas da rede
+            // 4. Calcula e exibe as métricas da rede (grau, centralidade, etc.).
             displayMetrics(sponsorshipData.nodes, sponsorshipData.links);
-            // Adicionar listener para redimensionar a janela
+
+            // 5. Adiciona um "ouvinte" de eventos para redesenhar o grafo se a janela do navegador for redimensionada.
             window.addEventListener('resize', () => drawGraph(sponsorshipData));
         }
 
-        // A função `drawGraph` agora recebe os dados como um parâmetro
+        /**
+         * Renderiza o grafo de força usando D3.js.
+         * @param {object} data - Os dados contendo nós (nodes) e conexões (links).
+         */
         function drawGraph(sponsorshipData) {
             const container = document.getElementById('graph');
-            container.innerHTML = ''; // Limpa o container antes de redesenhar
+            container.innerHTML = ''; // Limpa o conteúdo anterior para evitar duplicatas ao redesenhar.
             const tooltip = d3.select(".tooltip");
 
-            // Cria uma escala de cores ordinal para as categorias.
+            // Define uma paleta de cores para as diferentes categorias de entidades.
             const cores = [
               "#9E0031", "#6DC0D5", "#FFBF00", "#E83F6F", "#0CCE6B", 
               "#F26419", "#0A014F", "#DCF763", "#52489C", "#32936F", 
@@ -243,10 +251,11 @@
             
             const colorScale = d3.scaleOrdinal(cores);
             
+            // Extrai as categorias únicas para criar a legenda e associar cores.
             const categories = [...new Set(sponsorshipData.nodes.filter(n => n.type === 'entity').map(n => n.category))];
             categories.forEach(category => colorScale(category));
             
-            // Desenha a legenda (apenas se não existir para evitar duplicatas ao redimensionar)
+            // Renderiza a legenda de categorias, mas apenas na primeira vez para evitar duplicatas.
             if (d3.select("#legend-container .category-legend").empty()) {
                 const legendContainer = d3.select("#legend-container");
                 const legend = legendContainer.append("div").attr("class", "category-legend");
@@ -264,7 +273,7 @@
                     .text(d => d)
                     .attr("class", "legend-text");
 
-                // Add event listeners to legend items
+                // Adiciona eventos de mouse aos itens da legenda para interatividade.
                 legendItems.on("mouseover", function(event, category) {
                     highlightCategory(category);
                 })
@@ -279,76 +288,86 @@
             const width = container.clientWidth;
             const height = container.clientHeight;
 
+            // Cria o elemento SVG principal onde o grafo será desenhado.
             const svg = d3.select(container)
                 .append("svg")
                 .attr("viewBox", [0, 0, width, height])
                 .attr("width", width)
                 .attr("height", height);
             
+            // Adiciona um grupo <g> para conter todos os elementos do grafo, facilitando o zoom.
             const g = svg.append("g");
 
-            // Configuração do Zoom
+            // Configura o comportamento de zoom e pan.
             const zoom = d3.zoom()
-                .scaleExtent([0.1, 8])
+                .scaleExtent([0.1, 8]) // Define os limites mínimo e máximo de zoom.
                 .on('zoom', (event) => {
-                    g.attr('transform', event.transform);
+                    g.attr('transform', event.transform); // Aplica a transformação de zoom ao grupo <g>.
                 });
 
             svg.call(zoom);
 
+            // Conecta os botões da interface às funções de zoom e salvamento.
             document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.2);
             document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.8);
             document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
-            document.getElementById('save-btn').onclick = saveGraphAsPNG; // Conecta o botão de salvar
+            document.getElementById('save-btn').onclick = saveGraphAsPNG;
 
 
+            // Configura a simulação de força que posiciona os nós e links.
             const simulation = d3.forceSimulation(sponsorshipData.nodes)
                 .force("link", d3.forceLink(sponsorshipData.links).id(d => d.id).distance(d => {
-                    if (d.type === 'category') return 50;
-                    return d.source.type === 'sponsor' ? 150 : 80;
+                    if (d.type === 'category') return 50; // Links de categoria são mais curtos.
+                    return d.source.type === 'sponsor' ? 150 : 80; // Links de patrocínio são mais longos.
                 }).strength(0.8))
-                .force("charge", d3.forceManyBody().strength(-350))
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("x", d3.forceX())
+                .force("charge", d3.forceManyBody().strength(-350)) // Força de repulsão entre os nós.
+                .force("center", d3.forceCenter(width / 2, height / 2)) // Atrai os nós para o centro.
+                .force("x", d3.forceX()) // Forças de posicionamento X e Y.
                 .force("y", d3.forceY());
 
+            // Cria os elementos <line> para cada link no conjunto de dados.
             const link = g.append("g")
                 .selectAll("line")
                 .data(sponsorshipData.links)
                 .join("line")
                 .attr("class", d => d.type === 'category' ? "category-link" : "link");
 
+            // Cria um grupo <g> para cada nó, que conterá o círculo e o texto.
             const node = g.append("g")
                 .selectAll("g")
                 .data(sponsorshipData.nodes)
                 .join("g")
                 .attr("class", "node")
-                .call(drag(simulation));
+                .call(drag(simulation)); // Habilita o arrastar dos nós.
 
+            // Adiciona o círculo visual para cada nó.
             node.append("circle")
-                .attr("r", d => d.type === 'sponsor' ? 20 : 12)
+                .attr("r", d => d.type === 'sponsor' ? 20 : 12) // Patrocinadores são maiores.
                 .attr("fill", d => d.type === 'sponsor' ? '#1a202c' : colorScale(d.category))
                 .attr("stroke", "#fff")
                 .attr("stroke-width", 1.5);
 
+            // Adiciona o texto (ID) para cada nó.
             node.append("text")
                 .text(d => d.id)
                 .attr("x", d => d.type === 'sponsor' ? 24 : 16)
                 .attr("y", 4);
 
+            // Adiciona eventos de mouse para mostrar o tooltip e destacar conexões.
             node.on("mouseover", function(event, d) {
                 tooltip.style("opacity", 1)
                        .html(`<strong>${d.id}</strong><br>${d.category || 'Patrocinador'}`)
                        .style("left", (event.pageX + 15) + "px")
                        .style("top", (event.pageY - 28) + "px");
 
+                // Lógica de destaque específica para patrocinadores.
                 if (d.type === 'sponsor') {
                     link.style('stroke-opacity', l => (l.source === d || l.target === d) ? 1 : 0.05);
                     node.style('opacity', n => {
                         const isConnected = sponsorshipData.links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
                         return (n === d || isConnected) ? 1 : 0.2;
                     });
-                } else {
+                } else { // Lógica de destaque para entidades.
                     const categoryNodes = sponsorshipData.nodes.filter(n => n.category === d.category).map(n => n.id);
                     const connectedSponsors = [];
                     
@@ -384,6 +403,7 @@
                 node.style('opacity', 1);
             });
 
+            // A cada "tick" da simulação, atualiza a posição dos links e nós.
             simulation.on("tick", () => {
                 link
                     .attr("x1", d => d.source.x)
@@ -395,20 +415,23 @@
             });
         }
         
-        // Função para arrastar os nós
+        /**
+         * Habilita a funcionalidade de arrastar os nós com o mouse.
+         * @param {object} simulation - A simulação de força do D3.
+         */
         function drag(simulation) {
             function dragstarted(event, d) {
-                if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x;
+                if (!event.active) simulation.alphaTarget(0.3).restart(); // Reaquece a simulação.
+                d.fx = d.x; // Fixa a posição do nó.
                 d.fy = d.y;
             }
             function dragged(event, d) {
-                d.fx = event.x;
+                d.fx = event.x; // Atualiza a posição fixa enquanto arrasta.
                 d.fy = event.y;
             }
             function dragended(event, d) {
-                if (!event.active) simulation.alphaTarget(0);
-                d.fx = null;
+                if (!event.active) simulation.alphaTarget(0); // Esfria a simulação.
+                d.fx = null; // Libera a posição do nó.
                 d.fy = null;
             }
             return d3.drag()
@@ -417,16 +440,18 @@
                 .on("end", dragended);
         }
 
-        // Helper functions for category highlighting
+        /**
+         * Funções de apoio para destacar categorias ao interagir com a legenda.
+         */
         function highlightCategory(category) {
             const tooltip = d3.select(".tooltip");
             const nodes = sponsorshipData.nodes;
             const links = sponsorshipData.links;
             
-            // Get all entity nodes in this category
+            // Obtém todos os nós que pertencem à categoria selecionada.
             const categoryNodes = nodes.filter(n => n.category === category).map(n => n.id);
             
-            // Get connected sponsors
+            // Encontra os patrocinadores conectados a essa categoria.
             const connectedSponsors = [];
             links.forEach(l => {
                 if (categoryNodes.includes(l.source.id) && l.target.type === 'sponsor') {
@@ -437,7 +462,7 @@
                 }
             });
 
-            // Highlight logic
+            // Aplica a lógica de destaque visual.
             d3.selectAll(".link")
                 .style('stroke-opacity', l => (
                     categoryNodes.includes(l.source.id) || 
@@ -458,13 +483,18 @@
                 .style("top", (event.pageY - 28) + "px");
         }
 
+        /**
+         * Reseta o destaque visual, retornando o grafo ao seu estado normal.
+         */
         function resetHighlight() {
             d3.select(".tooltip").style("opacity", 0);
             d3.selectAll(".link").style('stroke-opacity', null);
             d3.selectAll(".node").style('opacity', 1);
         }
 
-        // Função para salvar o gráfico como PNG
+        /**
+         * Salva o grafo SVG atual como uma imagem PNG.
+         */
         function saveGraphAsPNG() {
             const svgNode = d3.select("#graph svg").node();
             const svgString = new XMLSerializer().serializeToString(svgNode);
@@ -474,19 +504,20 @@
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement("canvas");
-                // Usar as dimensões do SVG para garantir a qualidade
+                // Define as dimensões do canvas com base nas do SVG para manter a qualidade.
                 const width = svgNode.getAttribute('width');
                 const height = svgNode.getAttribute('height');
                 canvas.width = width;
                 canvas.height = height;
 
                 const ctx = canvas.getContext("2d");
-                // Adicionar um fundo branco
+                // Adiciona um fundo branco para a imagem PNG.
                 ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0, width, height);
                 URL.revokeObjectURL(url);
 
+                // Cria um link de download temporário e simula um clique para baixar a imagem.
                 const link = document.createElement("a");
                 link.download = "grafo-patrocinios.png";
                 link.href = canvas.toDataURL("image/png");
@@ -498,24 +529,22 @@
         }
 
 
-        // Funções para cálculo de métricas
+        /**
+         * Funções para cálculo de métricas da rede.
+         */
+
+        // Calcula a Centralidade de Grau para cada nó.
         function calculateDegreeCentrality(nodes, links) {
             const degreeMap = new Map();
-            
-            // Initialize all nodes with degree 0
-            nodes.forEach(node => {
-                degreeMap.set(node.id, 0);
-            });
-            
-            // Count links for each node
+            nodes.forEach(node => degreeMap.set(node.id, 0));
             links.forEach(link => {
                 degreeMap.set(link.source.id || link.source, degreeMap.get(link.source.id || link.source) + 1);
                 degreeMap.set(link.target.id || link.target, degreeMap.get(link.target.id || link.target) + 1);
             });
-            
             return degreeMap;
         }
 
+        // Calcula a Centralidade de Intermediação para cada nó.
         function calculateBetweennessCentrality(nodes, links) {
             const betweenness = new Map();
             nodes.forEach(node => betweenness.set(node.id, 0));
@@ -583,7 +612,7 @@
                 }
             });
             
-            // Normalize
+            // Normaliza os valores.
             const n = nodes.length;
             const scale = 1 / ((n - 1) * (n - 2));
             nodes.forEach(node => {
@@ -593,6 +622,7 @@
             return betweenness;
         }
 
+        // Calcula o Coeficiente de Agrupamento para cada nó.
         function calculateClusteringCoefficient(nodes, links) {
             const coefficients = new Map();
             nodes.forEach(node => coefficients.set(node.id, 0));
@@ -637,32 +667,35 @@
             return coefficients;
         }
 
+        /**
+         * Calcula e exibe as principais métricas da rede na interface do usuário.
+         */
         function displayMetrics(nodes, links) {
             const metricsContainer = document.getElementById('metrics-display');
             metricsContainer.innerHTML = '';
             
-            // Degree Centrality
+            // Centralidade de Grau (Degree Centrality)
             const degreeMap = calculateDegreeCentrality(nodes, links);
             const degreeValues = [...degreeMap.values()];
             const avgDegree = degreeValues.reduce((a, b) => a + b, 0) / nodes.length;
             const maxDegree = Math.max(...degreeValues);
             
-            // Betweenness Centrality
+            // Centralidade de Intermediação (Betweenness Centrality)
             const betweennessMap = calculateBetweennessCentrality(nodes, links);
             const betweennessValues = [...betweennessMap.values()];
             const avgBetweenness = betweennessValues.reduce((a, b) => a + b, 0) / nodes.length;
             const maxBetweenness = Math.max(...betweennessValues);
             
-            // Clustering Coefficient
+            // Coeficiente de Agrupamento (Clustering Coefficient)
             const clusteringMap = calculateClusteringCoefficient(nodes, links);
             const clusteringValues = [...clusteringMap.values()];
             const avgClustering = clusteringValues.reduce((a, b) => a + b, 0) / nodes.length;
             
-            // Network Density
+            // Densidade da Rede (Network Density)
             const possibleLinks = nodes.length * (nodes.length - 1) / 2;
             const density = links.length / possibleLinks;
             
-            // Create metrics cards
+            // Cria os cartões para exibir as métricas.
             const metrics = [
                 { title: 'Grau Médio', value: avgDegree.toFixed(2), description: 'Número médio de conexões por nó' },
                 { title: 'Grau Máximo', value: maxDegree, description: 'Maior número de conexões em um único nó' },
@@ -684,7 +717,7 @@
             });
         }
 
-        // Inicia todo o processo
+        // Inicia todo o processo de visualização.
         iniciarVisualizacao();
 
     </script>
@@ -695,7 +728,7 @@
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
                 </svg>
-                <span class="text-sm font-medium">Analysis and code by Tavarezz</span>
+                <span class="text-sm font-medium">Análise e Código por Gustavo Tavares</span>
             </a>
         </div>
     </footer>
