@@ -182,19 +182,15 @@
     </div>
 
     <script type="module">
-        // Holds the graph data globally within the module scope for accessibility.
-        let sponsorshipData;
+        let sponsorshipData; // Make data available globally
 
-        /**
-         * Main function to initialize data loading and visualization.
-         */
-        async function startVisualization() {
-            // 1. Fetch the sponsorship data from the JSON file.
+        // Função principal que inicia o carregamento dos dados e a visualização
+        async function iniciarVisualizacao() {
+            // 1. Carregar os dados do arquivo JSON
             const response = await fetch('data.json');
             sponsorshipData = await response.json();
             
-            // --- Dynamically create links between entities of the same category. ---
-            // This helps to visually cluster them in the graph.
+            // --- LÓGICA PARA CRIAR LINKS DE CATEGORIA (movida para dentro da função) ---
             const nodesByCategory = sponsorshipData.nodes
                 .filter(node => node.type === 'entity')
                 .reduce((acc, node) => {
@@ -220,41 +216,45 @@
                 }
             }
             sponsorshipData.links.push(...categoryLinks);
-            // --- End of dynamic link creation ---
+            // --- FIM DA LÓGICA DE LINKS ---
 
-            // 2. Render the graph with the processed data.
+            // 2. Chamar a função para desenhar o gráfico com os dados carregados
             drawGraph(sponsorshipData);
             
-            // 3. Calculate and display network metrics.
+            // 3. Calcular e exibir métricas da rede
             displayMetrics(sponsorshipData.nodes, sponsorshipData.links);
-
-            // Redraw the graph on window resize to ensure responsiveness.
+            // Adicionar listener para redimensionar a janela
             window.addEventListener('resize', () => drawGraph(sponsorshipData));
         }
 
-        /**
-         * Renders the force-directed graph using D3.js.
-         * @param {object} data - The graph data containing nodes and links.
-         */
-        function drawGraph(data) {
+        // A função `drawGraph` agora recebe os dados como um parâmetro
+        function drawGraph(sponsorshipData) {
             const container = document.getElementById('graph');
-            // Clear the container to prevent duplication on redraw (e.g., on window resize).
-            container.innerHTML = ''; 
+            container.innerHTML = ''; // Limpa o container antes de redesenhar
             const tooltip = d3.select(".tooltip");
 
-            // Define a vibrant, ordinal color scale for entity categories.
-            const colors = [
-                "#9E0031", "#6DC0D5", "#FFBF00", "#E83F6F", "#0CCE6B",
-                "#F26419", "#0A014F", "#DCF763", "#52489C", "#32936F",
-                "#550C18", "#2274A5"  
+            // Cria uma escala de cores ordinal para as categorias.
+            const cores = [
+              "#9E0031", // Madder
+              "#6DC0D5", // Sky Blue
+              "#FFBF00", // Amber
+              "#E83F6F", // Cerise
+              "#0CCE6B", // Emerald
+              "#F26419", // Orange(Pantone)
+              "#0A014F", // Federal Blue
+              "#DCF763", // Mindaro
+              "#52489C", // Ultra Violet
+              "#32936F", // Sea Green
+              "#550C18", // Chocolate cosmos
+              "#2274A5"  // UCLA Blue   
             ];
             
-            const colorScale = d3.scaleOrdinal(colors);
+            const colorScale = d3.scaleOrdinal(cores);
             
-            const categories = [...new Set(data.nodes.filter(n => n.type === 'entity').map(n => n.category))];
+            const categories = [...new Set(sponsorshipData.nodes.filter(n => n.type === 'entity').map(n => n.category))];
             categories.forEach(category => colorScale(category));
             
-            // Generate the category legend, but only if it hasn't been created yet.
+            // Desenha a legenda (apenas se não existir para evitar duplicatas ao redimensionar)
             if (d3.select("#legend-container .category-legend").empty()) {
                 const legendContainer = d3.select("#legend-container");
                 const legend = legendContainer.append("div").attr("class", "category-legend");
@@ -272,7 +272,7 @@
                     .text(d => d)
                     .attr("class", "legend-text");
 
-                // Add interaction listeners to each legend item for highlighting.
+                // Add event listeners to legend items
                 legendItems.on("mouseover", function(event, category) {
                     highlightCategory(category);
                 })
@@ -295,104 +295,102 @@
             
             const g = svg.append("g");
 
-            // Set up the zoom behavior.
+            // Configuração do Zoom
             const zoom = d3.zoom()
-                .scaleExtent([0.1, 8]) // Set zoom range from 10% to 800%.
+                .scaleExtent([0.1, 8])
                 .on('zoom', (event) => {
                     g.attr('transform', event.transform);
                 });
 
             svg.call(zoom);
 
-            // Connect zoom buttons to the zoom behavior.
             document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.2);
             document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.8);
             document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
 
 
-            // Initialize the D3 force simulation.
-            const simulation = d3.forceSimulation(data.nodes)
-                .force("link", d3.forceLink(data.links).id(d => d.id).distance(d => {
-                    if (d.type === 'category') return 50; // Shorter links for category clustering.
+            const simulation = d3.forceSimulation(sponsorshipData.nodes)
+                .force("link", d3.forceLink(sponsorshipData.links).id(d => d.id).distance(d => {
+                    if (d.type === 'category') return 50;
                     return d.source.type === 'sponsor' ? 150 : 80;
                 }).strength(0.8))
-                .force("charge", d3.forceManyBody().strength(-350)) // Repulsive force between nodes.
-                .force("center", d3.forceCenter(width / 2, height / 2)) // Center the graph.
-                .force("x", d3.forceX()) // Attracts nodes to the horizontal center.
-                .force("y", d3.forceY()); // Attracts nodes to the vertical center.
+                .force("charge", d3.forceManyBody().strength(-350))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("x", d3.forceX())
+                .force("y", d3.forceY());
 
-            // Create link elements.
             const link = g.append("g")
                 .selectAll("line")
-                .data(data.links)
+                .data(sponsorshipData.links)
                 .join("line")
                 .attr("class", d => d.type === 'category' ? "category-link" : "link");
 
-            // Create node groups (g element) for circle and text.
             const node = g.append("g")
                 .selectAll("g")
-                .data(data.nodes)
+                .data(sponsorshipData.nodes)
                 .join("g")
                 .attr("class", "node")
-                .call(drag(simulation)); // Enable dragging.
+                .call(drag(simulation));
 
-            // Append circles to the node groups.
             node.append("circle")
-                .attr("r", d => d.type === 'sponsor' ? 20 : 12) // Sponsors are larger.
+                .attr("r", d => d.type === 'sponsor' ? 20 : 12)
                 .attr("fill", d => d.type === 'sponsor' ? '#1a202c' : colorScale(d.category))
                 .attr("stroke", "#fff")
                 .attr("stroke-width", 1.5);
 
-            // Append text labels to the node groups.
             node.append("text")
                 .text(d => d.id)
-                .attr("x", d => d.type === 'sponsor' ? 24 : 16) // Offset text from the circle.
+                .attr("x", d => d.type === 'sponsor' ? 24 : 16)
                 .attr("y", 4);
 
-            // Set up mouse events for highlighting and tooltips.
             node.on("mouseover", function(event, d) {
-                // Show and position the tooltip.
                 tooltip.style("opacity", 1)
                        .html(`<strong>${d.id}</strong><br>${d.category || 'Patrocinador'}`)
                        .style("left", (event.pageX + 15) + "px")
                        .style("top", (event.pageY - 28) + "px");
 
-                // Highlight connected nodes and links.
                 if (d.type === 'sponsor') {
                     link.style('stroke-opacity', l => (l.source === d || l.target === d) ? 1 : 0.05);
                     node.style('opacity', n => {
-                        const isConnected = data.links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
+                        const isConnected = sponsorshipData.links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
                         return (n === d || isConnected) ? 1 : 0.2;
                     });
-                } else { // Highlighting for entity nodes.
-                    const categoryNodes = data.nodes.filter(n => n.category === d.category).map(n => n.id);
-                    const connectedSponsors = new Set();
-                    data.links.forEach(l => {
-                        if (categoryNodes.includes(l.source.id) && l.target.type === 'sponsor') connectedSponsors.add(l.target.id);
-                        if (categoryNodes.includes(l.target.id) && l.source.type === 'sponsor') connectedSponsors.add(l.source.id);
+                } else {
+                    const categoryNodes = sponsorshipData.nodes.filter(n => n.category === d.category).map(n => n.id);
+                    const connectedSponsors = [];
+                    
+                    sponsorshipData.links.forEach(l => {
+                        if (categoryNodes.includes(l.source.id)) {
+                            if (l.target.type === 'sponsor') connectedSponsors.push(l.target.id);
+                        }
+                        if (categoryNodes.includes(l.target.id)) {
+                            if (l.source.type === 'sponsor') connectedSponsors.push(l.source.id);
+                        }
                     });
 
                     link.style('stroke-opacity', l => (
+                        l.source === d || l.target === d || 
                         categoryNodes.includes(l.source.id) || 
                         categoryNodes.includes(l.target.id) ||
-                        connectedSponsors.has(l.source.id) ||
-                        connectedSponsors.has(l.target.id)
+                        connectedSponsors.includes(l.source.id) ||
+                        connectedSponsors.includes(l.target.id)
                     ) ? 1 : 0.05);
 
-                    node.style('opacity', n => (
-                        n.category === d.category ||
-                        connectedSponsors.has(n.id)
-                    ) ? 1 : 0.2);
+                    node.style('opacity', n => {
+                        return (
+                            n === d || 
+                            n.category === d.category ||
+                            connectedSponsors.includes(n.id)
+                        ) ? 1 : 0.2;
+                    });
                 }
 
             }).on("mouseout", function() {
-                // Hide tooltip and reset all highlights.
                 tooltip.style("opacity", 0);
-                link.style('stroke-opacity', null); // Resets to CSS default.
+                link.style('stroke-opacity', null);
                 node.style('opacity', 1);
             });
 
-            // Update positions on each 'tick' of the simulation.
             simulation.on("tick", () => {
                 link
                     .attr("x1", d => d.source.x)
@@ -404,24 +402,20 @@
             });
         }
         
-        /**
-         * Creates and returns the D3 drag handler for nodes.
-         * @param {d3.Simulation} simulation - The D3 force simulation.
-         * @returns {d3.DragBehavior} The configured drag behavior.
-         */
+        // Função para arrastar os nós
         function drag(simulation) {
             function dragstarted(event, d) {
                 if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x; // Fix the node's position.
+                d.fx = d.x;
                 d.fy = d.y;
             }
             function dragged(event, d) {
-                d.fx = event.x; // Update the fixed position during the drag.
+                d.fx = event.x;
                 d.fy = event.y;
             }
             function dragended(event, d) {
                 if (!event.active) simulation.alphaTarget(0);
-                d.fx = null; // Release the node, allowing the simulation to move it again.
+                d.fx = null;
                 d.fy = null;
             }
             return d3.drag()
@@ -430,138 +424,226 @@
                 .on("end", dragended);
         }
 
-        // --- Helper functions for category highlighting from the legend ---
-
-        /**
-         * Highlights all nodes and links related to a specific category.
-         * @param {string} category - The category to highlight.
-         */
+        // Helper functions for category highlighting
         function highlightCategory(category) {
             const tooltip = d3.select(".tooltip");
-            const { nodes, links } = sponsorshipData;
+            const nodes = sponsorshipData.nodes;
+            const links = sponsorshipData.links;
             
-            // Get all entity nodes in this category.
-            const categoryNodeIds = nodes.filter(n => n.category === category).map(n => n.id);
+            // Get all entity nodes in this category
+            const categoryNodes = nodes.filter(n => n.category === category).map(n => n.id);
             
-            // Get all sponsors connected to this category.
-            const connectedSponsorIds = new Set();
+            // Get connected sponsors
+            const connectedSponsors = [];
             links.forEach(l => {
-                if (l.target.type === 'sponsor' && categoryNodeIds.includes(l.source.id)) connectedSponsorIds.add(l.target.id);
-                if (l.source.type === 'sponsor' && categoryNodeIds.includes(l.target.id)) connectedSponsorIds.add(l.source.id);
+                if (categoryNodes.includes(l.source.id) && l.target.type === 'sponsor') {
+                    connectedSponsors.push(l.target.id);
+                }
+                if (categoryNodes.includes(l.target.id) && l.source.type === 'sponsor') {
+                    connectedSponsors.push(l.source.id);
+                }
             });
 
-            // Apply highlighting styles: reduce opacity of non-related elements.
-            d3.selectAll(".link, .category-link")
+            // Highlight logic
+            d3.selectAll(".link")
                 .style('stroke-opacity', l => (
-                    categoryNodeIds.includes(l.source.id) || 
-                    categoryNodeIds.includes(l.target.id)
+                    categoryNodes.includes(l.source.id) || 
+                    categoryNodes.includes(l.target.id) ||
+                    connectedSponsors.includes(l.source.id) ||
+                    connectedSponsors.includes(l.target.id)
                 ) ? 1 : 0.05);
 
             d3.selectAll(".node")
                 .style('opacity', n => (
                     n.category === category ||
-                    connectedSponsorIds.has(n.id)
+                    connectedSponsors.includes(n.id)
                 ) ? 1 : 0.2);
 
             tooltip.style("opacity", 1)
-                .html(`<strong>${category}</strong><br>${categoryNodeIds.length} entidades relacionadas`)
+                .html(`<strong>${category}</strong><br>${categoryNodes.length} entidades relacionadas`)
                 .style("left", (event.pageX + 15) + "px")
                 .style("top", (event.pageY - 28) + "px");
         }
-        
-        /**
-         * Resets the opacity of all nodes and links to their default state.
-         */
+
         function resetHighlight() {
             d3.select(".tooltip").style("opacity", 0);
-            d3.selectAll(".link, .category-link").style('stroke-opacity', null);
+            d3.selectAll(".link").style('stroke-opacity', null);
             d3.selectAll(".node").style('opacity', 1);
         }
 
-        // --- Network Metrics Calculation Functions ---
-
-        /**
-         * Calculates the degree centrality for each node.
-         * Degree centrality is the number of links connected to a node.
-         * @param {Array} nodes - The array of node objects.
-         * @param {Array} links - The array of link objects.
-         * @returns {Map<string, number>} A map from node ID to its degree.
-         */
+        // Funções para cálculo de métricas
         function calculateDegreeCentrality(nodes, links) {
             const degreeMap = new Map();
-            nodes.forEach(node => degreeMap.set(node.id, 0));
-            links.forEach(link => {
-                // The D3 simulation replaces string IDs with node objects.
-                const sourceId = link.source.id || link.source;
-                const targetId = link.target.id || link.target;
-                degreeMap.set(sourceId, degreeMap.get(sourceId) + 1);
-                degreeMap.set(targetId, degreeMap.get(targetId) + 1);
+            
+            // Initialize all nodes with degree 0
+            nodes.forEach(node => {
+                degreeMap.set(node.id, 0);
             });
+            
+            // Count links for each node
+            links.forEach(link => {
+                degreeMap.set(link.source.id || link.source, degreeMap.get(link.source.id || link.source) + 1);
+                degreeMap.set(link.target.id || link.target, degreeMap.get(link.target.id || link.target) + 1);
+            });
+            
             return degreeMap;
         }
-        
-        // Note: The following are simplified implementations for demonstration.
-        // For very large or complex networks, consider using a dedicated graph library.
 
-        /**
-         * Calculates the betweenness centrality for each node using Brandes' algorithm.
-         * This metric measures how often a node lies on the shortest path between other nodes.
-         * @param {Array} nodes - The array of node objects.
-         * @param {Array} links - The array of link objects.
-         * @returns {Map<string, number>} A map from node ID to its normalized betweenness centrality.
-         */
         function calculateBetweennessCentrality(nodes, links) {
-            // Simplified implementation for demonstration.
-            // A full Brandes' algorithm is complex. We'll use a placeholder or simplified logic.
-            // This is a complex calculation; for now, we return a map of zeros as a placeholder.
-            // For a real implementation, a full Brandes algorithm would be required here.
             const betweenness = new Map();
             nodes.forEach(node => betweenness.set(node.id, 0));
-            // A correct implementation would be much more involved.
-            // Let's return zeros to avoid long calculation times and complexity in this example.
+            
+            nodes.forEach(source => {
+                const stack = [];
+                const paths = new Map();
+                const sigma = new Map();
+                const distance = new Map();
+                
+                nodes.forEach(node => {
+                    paths.set(node.id, []);
+                    sigma.set(node.id, 0);
+                    distance.set(node.id, -1);
+                });
+                
+                sigma.set(source.id, 1);
+                distance.set(source.id, 0);
+                
+                const queue = [source];
+                while (queue.length > 0) {
+                    const current = queue.shift();
+                    stack.push(current);
+                    
+                    const neighbors = links
+                        .filter(l => l.source.id === current.id || l.source === current.id)
+                        .map(l => l.target)
+                        .concat(links
+                            .filter(l => l.target.id === current.id || l.target === current.id)
+                            .map(l => l.source)
+                        );
+                    
+                    neighbors.forEach(neighbor => {
+                        if (distance.get(neighbor.id || neighbor) < 0) {
+                            queue.push(neighbor);
+                            distance.set(neighbor.id || neighbor, distance.get(current.id) + 1);
+                        }
+                        
+                        if (distance.get(neighbor.id || neighbor) === distance.get(current.id) + 1) {
+                            sigma.set(neighbor.id || neighbor, sigma.get(neighbor.id || neighbor) + sigma.get(current.id));
+                            paths.get(neighbor.id || neighbor).push(current);
+                        }
+                    });
+                }
+                
+                const delta = new Map();
+                nodes.forEach(node => delta.set(node.id, 0));
+                
+                while (stack.length > 0) {
+                    const current = stack.pop();
+                    paths.get(current.id).forEach(predecessor => {
+                        delta.set(
+                            predecessor.id,
+                            delta.get(predecessor.id) + 
+                            (sigma.get(predecessor.id) / sigma.get(current.id)) * 
+                            (1 + delta.get(current.id))
+                        );
+                    });
+                    
+                    if (current.id !== source.id) {
+                        betweenness.set(
+                            current.id,
+                            betweenness.get(current.id) + delta.get(current.id)
+                        );
+                    }
+                }
+            });
+            
+            // Normalize
+            const n = nodes.length;
+            const scale = 1 / ((n - 1) * (n - 2));
+            nodes.forEach(node => {
+                betweenness.set(node.id, betweenness.get(node.id) * scale);
+            });
+            
             return betweenness;
         }
 
-        /**
-         * Calculates the local clustering coefficient for each node.
-         * It measures how close a node's neighbors are to being a clique (fully connected).
-         * @param {Array} nodes - The array of node objects.
-         * @param {Array} links - The array of link objects.
-         * @returns {Map<string, number>} A map from node ID to its clustering coefficient.
-         */
         function calculateClusteringCoefficient(nodes, links) {
-            // Simplified implementation for demonstration.
             const coefficients = new Map();
             nodes.forEach(node => coefficients.set(node.id, 0));
-            // A correct implementation would be much more involved.
+            
+            nodes.forEach(node => {
+                const neighbors = links
+                    .filter(l => l.source.id === node.id || l.source === node.id)
+                    .map(l => l.target)
+                    .concat(links
+                        .filter(l => l.target.id === node.id || l.target === node.id)
+                        .map(l => l.source)
+                    );
+                
+                const k = neighbors.length;
+                if (k < 2) {
+                    coefficients.set(node.id, 0);
+                    return;
+                }
+                
+                let possibleLinks = k * (k - 1) / 2;
+                let actualLinks = 0;
+                
+                for (let i = 0; i < neighbors.length; i++) {
+                    for (let j = i + 1; j < neighbors.length; j++) {
+                        const neighbor1 = neighbors[i];
+                        const neighbor2 = neighbors[j];
+                        
+                        const hasLink = links.some(l => 
+                            (l.source.id === neighbor1.id && l.target.id === neighbor2.id) ||
+                            (l.source.id === neighbor2.id && l.target.id === neighbor1.id) ||
+                            (l.source === neighbor1.id && l.target === neighbor2.id) ||
+                            (l.source === neighbor2.id && l.target === neighbor1.id)
+                        );
+                        
+                        if (hasLink) actualLinks++;
+                    }
+                }
+                
+                coefficients.set(node.id, actualLinks / possibleLinks);
+            });
+            
             return coefficients;
         }
-        
-        /**
-         * Calculates various network metrics and displays them in the UI.
-         * @param {Array} nodes - The array of node objects.
-         * @param {Array} links - The array of link objects.
-         */
+
         function displayMetrics(nodes, links) {
             const metricsContainer = document.getElementById('metrics-display');
             metricsContainer.innerHTML = '';
             
-            // --- Metric Calculations ---
+            // Degree Centrality
             const degreeMap = calculateDegreeCentrality(nodes, links);
             const degreeValues = [...degreeMap.values()];
             const avgDegree = degreeValues.reduce((a, b) => a + b, 0) / nodes.length;
-            const maxDegreeNode = [...degreeMap.entries()].reduce((a, b) => b[1] > a[1] ? b : a);
-
+            const maxDegree = Math.max(...degreeValues);
+            
+            // Betweenness Centrality
+            const betweennessMap = calculateBetweennessCentrality(nodes, links);
+            const betweennessValues = [...betweennessMap.values()];
+            const avgBetweenness = betweennessValues.reduce((a, b) => a + b, 0) / nodes.length;
+            const maxBetweenness = Math.max(...betweennessValues);
+            
+            // Clustering Coefficient
+            const clusteringMap = calculateClusteringCoefficient(nodes, links);
+            const clusteringValues = [...clusteringMap.values()];
+            const avgClustering = clusteringValues.reduce((a, b) => a + b, 0) / nodes.length;
+            
+            // Network Density
             const possibleLinks = nodes.length * (nodes.length - 1) / 2;
             const density = links.length / possibleLinks;
             
-            // --- Create Metrics Cards for Display ---
+            // Create metrics cards
             const metrics = [
-                { title: 'Total de Nós', value: nodes.length, description: 'Número total de patrocinadores e entidades.' },
-                { title: 'Total de Conexões', value: links.length, description: 'Número total de patrocínios e links de categoria.' },
-                { title: 'Grau Médio de Conexão', value: avgDegree.toFixed(2), description: 'Número médio de conexões por nó.' },
-                { title: 'Nó Mais Conectado', value: `${maxDegreeNode[0]} (${maxDegreeNode[1]})`, description: 'O nó com o maior número de conexões.' },
-                { title: 'Densidade da Rede', value: density.toFixed(4), description: 'Proporção de conexões existentes em relação ao total possível.' }
+                { title: 'Grau Médio', value: avgDegree.toFixed(2), description: 'Número médio de conexões por nó' },
+                { title: 'Grau Máximo', value: maxDegree, description: 'Maior número de conexões em um único nó' },
+                { title: 'Centralidade de Intermediação Média', value: avgBetweenness.toFixed(4), description: 'Média de quantos caminhos passam por cada nó' },
+                { title: 'Centralidade de Intermediação Máxima', value: maxBetweenness.toFixed(4), description: 'Maior valor de intermediação na rede' },
+                { title: 'Coeficiente de Agrupamento Médio', value: avgClustering.toFixed(2), description: 'Probabilidade média de vizinhos estarem conectados' },
+                { title: 'Densidade da Rede', value: density.toFixed(4), description: 'Proporção de conexões existentes em relação ao total possível' }
             ];
             
             metrics.forEach(metric => {
@@ -576,8 +658,8 @@
             });
         }
 
-        // Initialize the application.
-        startVisualization();
+        // Inicia todo o processo
+        iniciarVisualizacao();
 
     </script>
     
@@ -591,5 +673,4 @@
             </a>
         </div>
     </footer>
-</body>
-</html>
+
